@@ -28,7 +28,7 @@ repos:
 #       --remove-unused-variables,
 #     ]
 - repo: https://github.com/hadialqattan/pycln
-  rev: v1.0.3
+  rev: v1.2.4
   hooks:
     - id: pycln
       args: [--config=setup.cfg]

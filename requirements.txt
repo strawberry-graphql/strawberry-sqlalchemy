@@ -1,0 +1,6 @@
+importlib-metadata==4.11.1
+pytest==7.0.1
+pytest-cov==3.0.0
+sentinel==0.3.0
+sqlalchemy>=1.4
+strawberry-graphql>=0.95

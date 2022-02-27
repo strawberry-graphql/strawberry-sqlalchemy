@@ -12,14 +12,15 @@ for all columns and relationships in the given model.
 
 - Extensible to arbitrary custom SQLAlchemy types.
 
-- Support for SQLAlchemy 1.x and 2.x
+- Support for SQLAlchemy >=1.4.x
 
+- Lightweight and fast.
 
 ## Getting Started
 
 First, define your sqlalchemy model:
 
-```
+```python
 # models.py
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -37,7 +38,7 @@ to register it as a strawberry type for the given SQLAlchemy model.
 This will automatically add fields for the model's columns, relationships, association proxies,
 and hybrid properties. For example:
 
-```
+```python
 # in another file
 strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
 @strawberry_sqlalchemy_mapper.type(models.Employee)
@@ -49,7 +50,7 @@ class Employee:
 
 Natively supports the following SQLAlchemy types:
 
-```
+```python
 Integer: int,
 Float: float,
 BigInteger: int,
@@ -78,6 +79,19 @@ i.e., both properties are expected to be relationships.
 
 ## Contributing
 
+We encourage you to contribute to strawberry-sqlalchemy-mapper! Any contributions you make are greatly appreciated.
+
+If you have a suggestion that would make this better, please fork the repo and create a pull request. Don't forget to give the project a star! Thanks again!
+
+1. Fork the Project
+2. Create your Feature Branch (git checkout -b feature)
+3. Commit your Changes (git commit -m 'Add some feature')
+4. Push to the Branch (git push origin feature)
+5. Open a Pull Request
+
+
+### Prerequisites
+
 This project uses `pre-commit`_, please make sure to install it before making any
 changes::
 
@@ -90,3 +104,19 @@ It is a good idea to update the hooks to the latest version::
     pre-commit autoupdate
 
 Don't forget to tell your contributors to also install and use pre-commit.
+
+### Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+### Test
+
+```bash
+pytest
+```
+
+## ⚖️ LICENSE
+
+MIT © [strawberry-sqlalchemy-mapper](LICENSE.txt)
