@@ -27,6 +27,11 @@ repos:
 #       --remove-all-unused-imports,
 #       --remove-unused-variables,
 #     ]
+- repo: https://github.com/hadialqattan/pycln
+  rev: v1.0.3
+  hooks:
+    - id: pycln
+      args: [--config=setup.cfg]
 
 - repo: https://github.com/pycqa/isort
   rev: 5.10.1
