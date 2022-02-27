@@ -39,12 +39,14 @@ This will automatically add fields for the model's columns, relationships, assoc
 and hybrid properties. For example:
 
 ```python
-# in another file
+# elsewhere
 strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
 @strawberry_sqlalchemy_mapper.type(models.Employee)
 class Employee:
     pass
 ```
+
+Several examples to help you get started are provided in the `examples` directory.
 
 ## Limitations
 
@@ -75,7 +77,6 @@ although support for `TypeDecorator` types is untested.
 
 Association proxies are expected to be of the form `association_proxy('relationship1', 'relationship2')`,
 i.e., both properties are expected to be relationships.
-
 
 ## Contributing
 
