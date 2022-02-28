@@ -106,7 +106,7 @@ class ShortStory:
     pass
 ```
 
-Several examples to help you get started are provided in the `examples` directory.
+Examples to help you get started are provided in the `examples` directory.
 
 ## Limitations
 
