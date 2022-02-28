@@ -75,7 +75,7 @@ schema = strawberry.Schema(
 ```
 
 
-Examples to help you get started are provided in the `examples` directory.
+Examples to help you get started with common frameworks such as Flask are provided in the `examples` directory.
 
 ## Limitations
 
