@@ -16,6 +16,13 @@ for all columns and relationships (subject to the limitations below) in the give
 
 ## Getting Started
 
+strawberry-sqlalchemy-mapper is available on [PyPi](https://pypi.org/project/strawberry-sqlalchemy-mapper/)
+
+```
+pip install strawberry-sqlalchemy-mapper
+```
+
+
 First, define your sqlalchemy model:
 
 ```python
