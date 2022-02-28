@@ -29,6 +29,7 @@ class Employee(Base):
     __tablename__ = 'employee'
     id = Column(UUID, primary_key=True)
     name = Column(String, nullable=False)
+    password_hash = Column(String, nullable=False)
 ```
 
 Next, decorate a type with `strawberry_sqlalchemy_mapper.type()`
@@ -41,7 +42,8 @@ and hybrid properties. For example:
 strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
 @strawberry_sqlalchemy_mapper.type(models.Employee)
 class Employee:
-    pass
+    __exclude__ = ["password_hash"]
+
 
 # context is expected to have an instance of StrawberrySQLAlchemyLoader
 class CustomGraphQLView(GraphQLView):
