@@ -74,40 +74,6 @@ schema = strawberry.Schema(
 )
 ```
 
-Roots of polymorphic hierarchies are also expected to be registered via
-`strawberry_sqlalchemy_mapper.interface()`, and its concrete type and
-its descendants are expected to inherit from the interface:
-
-```python
-class Book(Model):
-    id = Column(UUID, primary_key=True)
-
-class Novel(Book):
-    pass
-
-class ShortStory(Book):
-    pass
-
-
-# in another file
-strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
-
-@strawberry_sqlalchemy_mapper.interface(models.Book)
-class BookInterface:
-    pass
-
-@strawberry_sqlalchemy_mapper.type(models.Book)
-class Book:
-    pass
-
-@strawberry_sqlalchemy_mapper.type(models.Novel)
-class Novel:
-    pass
-
-@strawberry_sqlalchemy_mapper.type(models.ShortStory)
-class ShortStory:
-    pass
-```
 
 Examples to help you get started are provided in the `examples` directory.
 
@@ -144,6 +110,41 @@ although support for `TypeDecorator` types is untested.
 
 Association proxies are expected to be of the form `association_proxy('relationship1', 'relationship2')`,
 i.e., both properties are expected to be relationships.
+
+Roots of polymorphic hierarchies **are supported**, but are also expected to be registered via
+`strawberry_sqlalchemy_mapper.interface()`, and its concrete type and
+its descendants are expected to inherit from the interface:
+
+```python
+class Book(Model):
+    id = Column(UUID, primary_key=True)
+
+class Novel(Book):
+    pass
+
+class ShortStory(Book):
+    pass
+
+
+# in another file
+strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+
+@strawberry_sqlalchemy_mapper.interface(models.Book)
+class BookInterface:
+    pass
+
+@strawberry_sqlalchemy_mapper.type(models.Book)
+class Book:
+    pass
+
+@strawberry_sqlalchemy_mapper.type(models.Novel)
+class Novel:
+    pass
+
+@strawberry_sqlalchemy_mapper.type(models.ShortStory)
+class ShortStory:
+    pass
+```
 
 ## Contributing
 
