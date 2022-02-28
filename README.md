@@ -44,11 +44,62 @@ strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
 @strawberry_sqlalchemy_mapper.type(models.Employee)
 class Employee:
     pass
+
+
+# call finalize() before using the schema:
+strawberry_sqlalchemy_mapper.finalize()
+# only needed if you have polymorphic types
+additional_types = list(strawberry_sqlalchemy_mapper.mapped_types.values())
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    extensions=extensions,
+    types=additional_types,
+)
+```
+
+Roots of polymorphic hierarchies are also expected to be registered via
+`strawberry_sqlalchemy_mapper.interface()`, and its concrete type and
+its descendants are expected to inherit from the interface:
+
+```
+class Book(Model):
+    id = Column(UUID, primary_key=True)
+
+class Novel(Book):
+    pass
+
+class ShortStory(Book):
+    pass
+
+
+# in another file
+strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+
+@strawberry_sqlalchemy_mapper.interface(models.Book)
+class BookInterface:
+    pass
+
+@strawberry_sqlalchemy_mapper.type(models.Book)
+class Book:
+    pass
+
+@strawberry_sqlalchemy_mapper.type(models.Novel)
+class Novel:
+    pass
+
+@strawberry_sqlalchemy_mapper.type(models.ShortStory)
+class ShortStory:
+    pass
 ```
 
 Several examples to help you get started are provided in the `examples` directory.
 
 ## Limitations
+
+SQLAlchemy Models -> Strawberry Types and Interfaces are expected to have a consistent
+(customizable) naming convention. These can be configured by passing `model_to_type_name`
+and `model_to_interface_name` when constructing the mapper.
 
 Natively supports the following SQLAlchemy types:
 
