@@ -119,9 +119,6 @@ query {
 """
 ```
 
-
-Examples to help you get started with common frameworks such as Flask are provided in the `examples` directory.
-
 ## Limitations
 
 SQLAlchemy Models -> Strawberry Types and Interfaces are expected to have a consistent
