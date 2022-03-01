@@ -37,6 +37,14 @@ class Employee(Base):
     id = Column(UUID, primary_key=True)
     name = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
+    department_id = Column(UUID, ForeignKey('department.id'))
+    department = relationship('Department', back_populates='employees')
+
+class Department(Base):
+    __tablename__ = "department"
+    id = Column(UUID, primary_key=True)
+    name = Column(String, nullable=False)
+    employees = relationship('Employee', back_populates='department')
 ```
 
 Next, decorate a type with `strawberry_sqlalchemy_mapper.type()`
@@ -55,14 +63,28 @@ class Employee:
     __exclude__ = ["password_hash"]
 
 
+@strawberry_sqlalchemy_mapper.type(models.Department)
+class Department:
+    pass
+
+
+class Query:
+    @strawberry.field
+    def departments(self):
+        return db.session.scalars(select(models.Department)).all()
+
+
 # context is expected to have an instance of StrawberrySQLAlchemyLoader
 class CustomGraphQLView(GraphQLView):
     def get_context(self):
         return {
-            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(),
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=YOUR_SESSION),
         }
 
 # call finalize() before using the schema:
+# (note that models that are related to models that are in the schema
+# are automatically mapped at this stage -- e.g., Department is mapped
+# because employee.department is a relationshp to Department)
 strawberry_sqlalchemy_mapper.finalize()
 # only needed if you have polymorphic types
 additional_types = list(strawberry_sqlalchemy_mapper.mapped_types.values())
@@ -72,6 +94,29 @@ schema = strawberry.Schema(
     extensions=extensions,
     types=additional_types,
 )
+
+# You can now query, e.g.:
+"""
+query {
+    departments {
+        id
+        name
+        employees {
+            edge {
+                node {
+                    id
+                    name
+                    department {
+                        # Just an example of nested relationships
+                        id
+                        name
+                    }
+                }
+            }
+        }
+    }
+}
+"""
 ```
 
 
