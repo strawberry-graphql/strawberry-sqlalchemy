@@ -5,6 +5,7 @@ from sqlalchemy import Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from strawberry.type import StrawberryOptional
 
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
@@ -207,3 +208,55 @@ def test_add_annotation():
     strawberry_sqlalchemy_mapper._add_annotation(Base, key, annotation, field_keys)
     assert Base.__annotations__[key] == annotation
     assert field_keys == [key]
+
+
+def test_connection_resolver_for():
+    strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+    _, Department = _create_employee_and_department_tables()
+    employees_property = Department.employees.property
+    assert (
+        strawberry_sqlalchemy_mapper.connection_resolver_for(employees_property)
+        is not None
+    )
+
+
+def test_type_simple():
+    Employee = _create_employee_table()
+    strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+
+    @strawberry_sqlalchemy_mapper.type(Employee)
+    class Employee:
+        pass
+
+    strawberry_sqlalchemy_mapper.finalize()
+    additional_types = list(strawberry_sqlalchemy_mapper.mapped_types.values())
+    assert len(additional_types) == 1
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type._type_definition._fields) == 2
+    employee_type_fields = mapped_employee_type._type_definition._fields
+    name = list(filter(lambda f: f.name == "name", employee_type_fields))[0]
+    assert name.type == str
+    id = list(filter(lambda f: f.name == "id", employee_type_fields))[0]
+    assert id.type == int
+
+
+def test_type_relationships():
+    Employee, _ = _create_employee_and_department_tables()
+    strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+
+    @strawberry_sqlalchemy_mapper.type(Employee)
+    class Employee:
+        pass
+
+    strawberry_sqlalchemy_mapper.finalize()
+    additional_types = list(strawberry_sqlalchemy_mapper.mapped_types.values())
+    assert len(additional_types) == 2
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type._type_definition._fields) == 4
+    employee_type_fields = mapped_employee_type._type_definition._fields
+    name = list(filter(lambda f: f.name == "department_id", employee_type_fields))[0]
+    assert type(name.type) == StrawberryOptional
+    id = list(filter(lambda f: f.name == "department", employee_type_fields))[0]
+    assert type(id.type) == StrawberryOptional
