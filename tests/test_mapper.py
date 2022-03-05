@@ -172,6 +172,28 @@ def test_convert_enum_column_to_strawberry_type():
     )
 
 
+def test_convert_relationship_to_strawberry_type():
+    strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+    _, Department = _create_employee_and_department_tables()
+    employees_property = Department.employees.property
+    assert (
+        strawberry_sqlalchemy_mapper._convert_relationship_to_strawberry_type(
+            employees_property
+        ).__name__
+        == "EmployeeConnection"
+    )
+
+
+def test_get_relationship_is_optional():
+    strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+    _, Department = _create_employee_and_department_tables()
+    employees_property = Department.employees.property
+    assert (
+        strawberry_sqlalchemy_mapper._get_relationship_is_optional(employees_property)
+        is True
+    )
+
+
 def test_add_annotation():
     strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
 
