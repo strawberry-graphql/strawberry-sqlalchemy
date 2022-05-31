@@ -67,7 +67,7 @@ class Employee:
 class Department:
     pass
 
-
+@strawberry.type
 class Query:
     @strawberry.field
     def departments(self):
