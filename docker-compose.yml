@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: postgres:14
+    container_name: sqla-mapper-postgres
+    ports:
+      - 5432:5432
+    # volumes:
+      # - drinn_db_data:/var/lib/postgresql/data
+    # networks:
+      # - intranet
+    environment:
+      - POSTGRES_DB=sqla-mapper
+      - POSTGRES_PASSWORD=1234
