@@ -413,14 +413,12 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         return []
                     else:
                         return None
-		if isinstance(info.context, dict):
+                if isinstance(info.context, dict):
                     loader = info.context["sqlalchemy_loader"]
                 else:
                     loader = info.context.sqlalchemy_loader
-                related_objects = (
-                    await loader
-                    .loader_for(relationship)
-                    .load(relationship_key)
+                related_objects = await loader.loader_for(relationship).load(
+                    relationship_key
                 )
             return related_objects
 
@@ -537,7 +535,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 )
 
     def type(
-        self, model: Type[BaseModelType], make_interface=False
+        self,
+        model: Type[BaseModelType],
+        make_interface=False,
+        use_federation=False,
     ) -> Callable[[Type[object]], Any]:
         """
         Decorate a type with this to register it as a strawberry type
@@ -662,10 +663,11 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
             if make_interface:
                 mapped_type = strawberry.interface(type_)
-                self.mapped_interfaces[type_.__name__] = mapped_type
+            elif use_federation:
+                mapped_type = strawberry.federation.type(type_)
             else:
                 mapped_type = strawberry.type(type_)
-                self.mapped_types[type_.__name__] = mapped_type
+            self.mapped_types[type_.__name__] = mapped_type
             setattr(mapped_type, _GENERATED_FIELD_KEYS_KEY, generated_field_keys)
             setattr(mapped_type, _ORIGINAL_TYPE_KEY, type_)
             return mapped_type
