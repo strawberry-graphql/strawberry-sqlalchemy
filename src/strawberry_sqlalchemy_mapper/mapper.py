@@ -639,10 +639,19 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         or "return" not in descriptor.__annotations__
                     ):
                         raise HybridPropertyNotAnnotated(key)
+                    annotation = descriptor.__annotations__["return"]
+                    if isinstance(annotation, str):
+                        try:
+                            if "typing" in annotation:
+                                # Try to evaluate from existing typing imports
+                                annotation = annotation[7:]
+                            annotation = eval(annotation)
+                        except NameError:
+                            raise UnsupportedDescriptorType(key)
                     self._add_annotation(
                         type_,
                         key,
-                        descriptor.__annotations__["return"],
+                        annotation,
                         generated_field_keys,
                     )
                 else:
