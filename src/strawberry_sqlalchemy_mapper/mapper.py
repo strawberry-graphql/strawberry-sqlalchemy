@@ -399,7 +399,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
         async def resolve(self, info: Info):
             instance_state = cast(InstanceState, inspect(self))
-            if relationship.key not in instance_state.unloaded:
+            if (
+                relationship.key not in instance_state.unloaded
+                or relationship.direction == MANYTOMANY
+            ):
                 related_objects = getattr(self, relationship.key)
             else:
                 relationship_key = tuple(
