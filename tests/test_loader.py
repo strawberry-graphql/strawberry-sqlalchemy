@@ -31,6 +31,6 @@ def test_loader_for():
     loader = base_loader.loader_for(Employee.department.property)
     assert loader.max_batch_size is None
     assert loader.cache is True
-    assert loader.cache_map == {}
+    assert not loader.cache_map.cache_map
     assert loader._loop is None
     assert loader.load_fn is not None
