@@ -11,7 +11,7 @@ from setuptools import setup
 
 HERE = pathlib.Path(__file__).parent
 
-README = (HERE / "README.md").read_text()
+README = (HERE / "README.md").read_text(encoding="utf-8")
 
 if __name__ == "__main__":
     try:
