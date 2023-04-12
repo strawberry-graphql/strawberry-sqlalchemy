@@ -617,6 +617,17 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     continue
                 if key in mapper.columns or key in mapper.relationships:
                     continue
+                if key in model.__annotations__:
+                    annotation = eval(model.__annotations__[key])
+                    for (
+                        sqlalchemy_type,
+                        strawberry_type,
+                    ) in self.sqlalchemy_type_to_strawberry_type_map.items():
+                        if isinstance(annotation, sqlalchemy_type):
+                            self._add_annotation(
+                                type_, key, strawberry_type, generated_field_keys
+                            )
+                            break
                 if isinstance(descriptor, AssociationProxy):
                     strawberry_type = self._get_association_proxy_annotation(
                         mapper, key, descriptor
