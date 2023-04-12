@@ -628,7 +628,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                                 type_, key, strawberry_type, generated_field_keys
                             )
                             break
-                if isinstance(descriptor, AssociationProxy):
+                elif isinstance(descriptor, AssociationProxy):
                     strawberry_type = self._get_association_proxy_annotation(
                         mapper, key, descriptor
                     )
