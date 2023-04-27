@@ -1,5 +1,4 @@
 from collections import defaultdict
-import functools
 from typing import Any, Dict, List, Mapping, Tuple
 
 from sqlalchemy import select, tuple_
