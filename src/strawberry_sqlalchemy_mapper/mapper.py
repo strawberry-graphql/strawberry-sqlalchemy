@@ -186,7 +186,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         interface (base of a polymorphic hierarchy)
         """
         return (
-            self._is_model_polymorphic(model) and self._get_polymorphic_base_model(model) == model
+            self._is_model_polymorphic(model)
+            and self._get_polymorphic_base_model(model) == model
         )
 
     def model_to_type_or_interface_name(self, model: Type[BaseModelType]) -> str:
@@ -242,7 +243,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             setattr(connection_type, _IS_GENERATED_CONNECTION_TYPE_KEY, True)
         return self.connection_types[connection_name]
 
-    def _get_polymorphic_base_model(self, model: Type[BaseModelType]) -> Type[BaseModelType]:
+    def _get_polymorphic_base_model(
+        self, model: Type[BaseModelType]
+    ) -> Type[BaseModelType]:
         """
         Given a model, return the base of its inheritance tree (which may be itself).
         """
@@ -336,11 +339,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         are of the form (relationship, relationship).
         """
         is_multiple = mapper.relationships[descriptor.target_collection].uselist
-        in_between_mapper: Mapper = mapper.relationships[descriptor.target_collection].entity
+        in_between_mapper: Mapper = mapper.relationships[
+            descriptor.target_collection
+        ].entity
         if descriptor.value_attr in in_between_mapper.relationships:
             relationship = in_between_mapper.relationships[descriptor.value_attr]
             is_multiple = is_multiple or relationship.uselist
-            strawberry_type = self._convert_relationship_to_strawberry_type(relationship)
+            strawberry_type = self._convert_relationship_to_strawberry_type(
+                relationship
+            )
         else:
             raise UnsupportedAssociationProxyTarget(key)
         if strawberry_type is SkipTypeSentinel:
@@ -349,7 +356,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             cast(Union[Type[Any], ForwardRef], strawberry_type)
         ):
             if isinstance(strawberry_type, ForwardRef):
-                strawberry_type = self._connection_type_for(strawberry_type.__forward_arg__)
+                strawberry_type = self._connection_type_for(
+                    strawberry_type.__forward_arg__
+                )
             else:
                 strawberry_type = self._connection_type_for(
                     cast(Type[Any], strawberry_type).__name__
@@ -406,7 +415,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 related_objects = getattr(self, relationship.key)
             else:
                 relationship_key = tuple(
-                    [getattr(self, local.key) for local, _ in relationship.local_remote_pairs]
+                    [
+                        getattr(self, local.key)
+                        for local, _ in relationship.local_remote_pairs
+                    ]
                 )
                 if any(item is None for item in relationship_key):
                     if relationship.uselist:
@@ -417,8 +429,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     loader = info.context["sqlalchemy_loader"]
                 else:
                     loader = info.context.sqlalchemy_loader
-                related_objects = await loader.loader_for_mapped_type(relationship, mapper).load(
-                    relationship_key
+                related_objects = (
+                    await loader
+                    .loader_for_mapped_type(relationship, mapper)
+                    .load(relationship_key)
                 )
             return related_objects
 
@@ -456,11 +470,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         in_between_relationship = mapper.relationships[descriptor.target_collection]
         in_between_resolver = self.relationship_resolver_for(in_between_relationship)
-        in_between_mapper: Mapper = mapper.relationships[descriptor.target_collection].entity
+        in_between_mapper: Mapper = mapper.relationships[
+            descriptor.target_collection
+        ].entity
         assert descriptor.value_attr in in_between_mapper.relationships
         end_relationship = in_between_mapper.relationships[descriptor.value_attr]
         end_relationship_resolver = self.relationship_resolver_for(end_relationship)
-        end_type_name = self.model_to_type_or_interface_name(end_relationship.entity.entity)
+        end_type_name = self.model_to_type_or_interface_name(
+            end_relationship.entity.entity
+        )
         connection_type = self._connection_type_for(end_type_name)
         edge_type = self._edge_type_for(end_type_name)
         is_multiple = self._is_connection_type(strawberry_type)
@@ -476,7 +494,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 assert end_relationship_resolver is not None
                 if isinstance(in_between_objects, collections.abc.Iterable):
                     outputs = await asyncio.gather(
-                        *[end_relationship_resolver(obj, info) for obj in in_between_objects]
+                        *[
+                            end_relationship_resolver(obj, info)
+                            for obj in in_between_objects
+                        ]
                     )
                     if outputs and isinstance(outputs[0], list):
                         outputs = list(chain.from_iterable(outputs))
@@ -490,7 +511,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             else:
                 assert descriptor.value_attr in in_between_mapper.columns
                 if isinstance(in_between_objects, collections.abc.Iterable):
-                    return [getattr(obj, descriptor.value_attr) for obj in in_between_objects]
+                    return [
+                        getattr(obj, descriptor.value_attr)
+                        for obj in in_between_objects
+                    ]
                 else:
                     return getattr(in_between_objects, descriptor.value_attr)
 
@@ -509,7 +533,11 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         for key, column in mapper.columns.items():
             column: Column
-            if key in excluded_keys or key in type_.__annotations__ or hasattr(type_, key):
+            if (
+                key in excluded_keys
+                or key in type_.__annotations__
+                or hasattr(type_, key)
+            ):
                 continue
             type_annotation = self._convert_column_to_strawberry_type(column)
             if type_annotation is not SkipTypeSentinel:
@@ -521,10 +549,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 )
 
     def type(
-        self,
-        model: Type[BaseModelType],
-        make_interface=False,
-        use_federation=False,
+        self, model: Type[BaseModelType], make_interface=False,
     ) -> Callable[[Type[object]], Any]:
         """
         Decorate a type with this to register it as a strawberry type
@@ -554,7 +579,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
             excluded_keys = getattr(type_, "__exclude__", [])
 
-            self._add_annotation(type_, "_row", strawberry.Private[Any], generated_field_keys)
+            self._add_annotation(
+                type_, "_row", strawberry.Private[Any], generated_field_keys
+            )
 
             def from_row(cls, row, **kwargs) -> type_:
                 """Only works in python 3.10+. Requires all fields not from"""
@@ -566,7 +593,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 return cls(_row=row, **(init_dict | kwargs))
 
             self._add_annotation(
-                type_, "from_row", strawberry.Private[Callable[..., type_]], generated_field_keys
+                type_, "from_row", strawberry.Private[Callable[..., type_]],
+                generated_field_keys
             )
             type_.from_row = classmethod(from_row)
 
@@ -586,16 +614,24 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             self._handle_columns(mapper, type_, excluded_keys, generated_field_keys)
             for key, relationship in mapper.relationships.items():
                 relationship: RelationshipProperty
-                if key in excluded_keys or key in type_.__annotations__ or hasattr(type_, key):
+                if (
+                    key in excluded_keys
+                    or key in type_.__annotations__
+                    or hasattr(type_, key)
+                ):
                     continue
-                strawberry_type = self._convert_relationship_to_strawberry_type(relationship)
+                strawberry_type = self._convert_relationship_to_strawberry_type(
+                    relationship
+                )
                 self._add_annotation(
                     type_,
                     key,
                     strawberry_type,
                     generated_field_keys,
                 )
-                field = strawberry.field(resolver=self.connection_resolver_for(relationship))
+                field = strawberry.field(
+                    resolver=self.connection_resolver_for(relationship)
+                )
                 assert not field.init
                 setattr(
                     type_,
@@ -603,7 +639,11 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     field,
                 )
             for key, descriptor in mapper.all_orm_descriptors.items():
-                if key in excluded_keys or key in type_.__annotations__ or hasattr(type_, key):
+                if (
+                    key in excluded_keys
+                    or key in type_.__annotations__
+                    or hasattr(type_, key)
+                ):
                     continue
                 if key in mapper.columns or key in mapper.relationships:
                     continue
@@ -613,7 +653,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     )
                     if strawberry_type is SkipTypeSentinel:
                         continue
-                    self._add_annotation(type_, key, strawberry_type, generated_field_keys)
+                    self._add_annotation(
+                        type_, key, strawberry_type, generated_field_keys
+                    )
                     field = strawberry.field(
                         resolver=self.association_proxy_resolver_for(
                             mapper, descriptor, strawberry_type
@@ -627,19 +669,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         or "return" not in descriptor.__annotations__
                     ):
                         raise HybridPropertyNotAnnotated(key)
-                    annotation = descriptor.__annotations__["return"]
-                    if isinstance(annotation, str):
-                        try:
-                            if "typing" in annotation:
-                                # Try to evaluate from existing typing imports
-                                annotation = annotation[7:]
-                            annotation = eval(annotation)
-                        except NameError:
-                            raise UnsupportedDescriptorType(key)
                     self._add_annotation(
                         type_,
                         key,
-                        annotation,
+                        descriptor.__annotations__["return"],
                         generated_field_keys,
                     )
                 else:
@@ -647,7 +680,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
             # ignore inherited `is_type_of`
             if "is_type_of" not in type_.__dict__:
-                type_.is_type_of = lambda obj, info: type(obj) == model or type(obj) == type_
+                type_.is_type_of = (
+                    lambda obj, info: type(obj) == model or type(obj) == type_
+                )
 
             # need to make fields that are already in the type
             # (prior to mapping) appear *after* the mapped fields
@@ -658,11 +693,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
             if make_interface:
                 mapped_type = strawberry.interface(type_)
-            elif use_federation:
-                mapped_type = strawberry.federation.type(type_)
+                self.mapped_interfaces[type_.__name__] = mapped_type
             else:
                 mapped_type = strawberry.type(type_)
-            self.mapped_types[type_.__name__] = mapped_type
+                self.mapped_types[type_.__name__] = mapped_type
             setattr(mapped_type, _GENERATED_FIELD_KEYS_KEY, generated_field_keys)
             setattr(mapped_type, _ORIGINAL_TYPE_KEY, type_)
             return mapped_type
@@ -742,5 +776,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             for model in unmapped_models:
                 self.type(model)(type(self.model_to_type_name(model), (object,), {}))
             for model in unmapped_interface_models:
-                self.interface(model)(type(self.model_to_interface_name(model), (object,), {}))
-            unmapped_model_found = len(unmapped_models) > 0 or len(unmapped_interface_models) > 0
+                self.interface(model)(
+                    type(self.model_to_interface_name(model), (object,), {})
+                )
+            unmapped_model_found = (
+                len(unmapped_models) > 0 or len(unmapped_interface_models) > 0
+            )

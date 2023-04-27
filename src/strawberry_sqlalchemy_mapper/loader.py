@@ -26,12 +26,16 @@ class StrawberrySQLAlchemyLoader:
             # We need to calculate type_ here, rather than outside the closure, so as not
             # to depend on the order of type mapping. The relationship type might not be
             # mapped at the point the loader is created, but should be by the time it runs.
-            type_ = mapper.mapped_types[mapper.model_to_type_name(relationship.entity.entity)]
+            type_ = mapper.mapped_types[
+                mapper.model_to_type_name(relationship.entity.entity)
+            ]
             return type_.from_row(row, **kwargs)
 
         return self.loader_for(relationship, constructor=constructor)
 
-    def loader_for(self, relationship: RelationshipProperty, constructor=None) -> DataLoader:
+    def loader_for(
+        self, relationship: RelationshipProperty, constructor=None
+    ) -> DataLoader:
         """
         Retrieve or create a DataLoader for the given relationship
         """
@@ -44,7 +48,9 @@ class StrawberrySQLAlchemyLoader:
 
             async def load_fn(keys: List[Tuple]) -> List[Any]:
                 query = select(related_model).filter(
-                    tuple_(*[remote for _, remote in relationship.local_remote_pairs]).in_(keys)
+                    tuple_(
+                        *[remote for _, remote in relationship.local_remote_pairs]
+                    ).in_(keys)
                 )
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
@@ -52,7 +58,10 @@ class StrawberrySQLAlchemyLoader:
 
                 def group_by_remote_key(row: Any) -> Tuple:
                     return tuple(
-                        [getattr(row, remote.key) for _, remote in relationship.local_remote_pairs]
+                        [
+                            getattr(row, remote.key)
+                            for _, remote in relationship.local_remote_pairs
+                        ]
                     )
 
                 grouped_keys: Mapping[Tuple, List[Any]] = defaultdict(list)
