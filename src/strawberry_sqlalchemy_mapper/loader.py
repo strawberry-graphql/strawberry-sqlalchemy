@@ -24,14 +24,14 @@ class StrawberrySQLAlchemyLoader:
         try:
             return self._loaders[relationship]
         except KeyError:
-            related_model = relationship.entity.entity
-
             async def load_fn(keys: List[Tuple]) -> List[Any]:
-                query = select(related_model).filter(
-                    tuple_(
-                        *[remote for _, remote in relationship.local_remote_pairs]
-                    ).in_(keys)
-                )
+                related_model = relationship.entity.entity
+                if secondary is not None:
+                    query = select(related_model).filter(
+                        tuple_(
+                            *[remote for _, remote in relationship.local_remote_pairs]
+                        ).in_(keys)
+                    )
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
                 rows = self.bind.scalars(query).all()
