@@ -32,13 +32,13 @@ def _create_secondary_tables(Base):
     EmployeeDepartmentJoinTable = Table(
         "employee_department_join_table",
         Base.metadata,
-        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
-        Column("department_id", ForeignKey("department.id"), primary_key=True)
+        Column("employee_id", ForeignKey("employee.e_id"), primary_key=True),
+        Column("department_id", ForeignKey("department.d_id"), primary_key=True)
     )
 
     class Employee(Base):
         __tablename__ = "employee"
-        id = Column(Integer, autoincrement=True, primary_key=True)
+        e_id = Column(Integer, autoincrement=True, primary_key=True)
         name = Column(String, nullable=False)
         departments = relationship(
             "Department",
@@ -48,7 +48,7 @@ def _create_secondary_tables(Base):
 
     class Department(Base):
         __tablename__ = "department"
-        id = Column(Integer, autoincrement=True, primary_key=True)
+        d_id = Column(Integer, autoincrement=True, primary_key=True)
         name = Column(String, nullable=False)
         employees = relationship(
             "Employee",
