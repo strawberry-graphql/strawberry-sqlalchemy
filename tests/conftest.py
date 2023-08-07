@@ -13,9 +13,14 @@ import unittest
 
 import pytest
 import sqlalchemy
+from packaging import version
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy import orm
 from testing.postgresql import PostgresqlFactory, Postgresql
+
+
+SQLA_VERSION = version.parse(sqlalchemy.__version__)
+SQLA2 = SQLA_VERSION >= version.parse("2.0")
 
 
 def _pick_unused_port():
@@ -39,9 +44,19 @@ def postgresql(_postgresql_factory) -> Postgresql:
     db.stop()
 
 
-@pytest.fixture
-def engine(postgresql) -> Engine:
-    engine = sqlalchemy.create_engine(postgresql.url(), future=True)
+
+SUPPORTED_DBS = ["postgresql"]  # TODO: Add sqlite and mysql.
+
+@pytest.fixture(params=SUPPORTED_DBS)
+def engine(request) -> Engine:
+    if request.param == "postgresql":
+        url = request.getfixturevalue("postgresql").url()
+    else:
+        raise ValueError("Unsupported database: %s", request.param)
+    kwargs = {}
+    if not SQLA2:
+        kwargs["future"] = True
+    engine = sqlalchemy.create_engine(url, **kwargs)
     yield engine
 
 
