@@ -18,6 +18,4 @@ comment:
   require_changes: no
 
 ignore:
-  - "strawberry/ext/mypy_plugin.py"
   - "setup.py"
-  - "strawberry/experimental/pydantic/conversion_types.py"
