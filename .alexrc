@@ -1,0 +1,16 @@
+{
+  "allow": [
+    "black",
+    "hook",
+    "hooks",
+    "failure",
+    "period",
+    "execute",
+    "executed",
+    "executes",
+    "execution",
+    "special",
+    "primitive",
+    "invalid"
+  ]
+}
