@@ -683,11 +683,13 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
             if make_interface:
                 mapped_type = strawberry.interface(type_)
+                self.mapped_interfaces[type_.__name__] = mapped_type
             elif use_federation:
                 mapped_type = strawberry.federation.type(type_)
+                self.mapped_types[type_.__name__] = mapped_type
             else:
                 mapped_type = strawberry.type(type_)
-            self.mapped_types[type_.__name__] = mapped_type
+                self.mapped_types[type_.__name__] = mapped_type
             setattr(mapped_type, _GENERATED_FIELD_KEYS_KEY, generated_field_keys)
             setattr(mapped_type, _ORIGINAL_TYPE_KEY, type_)
             return mapped_type
@@ -728,7 +730,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             self.edge_types.values(),
             self.connection_types.values(),
         ):
-            for field in mapped_type._type_definition.fields:
+            for field in mapped_type.__strawberry_definition__.fields:
                 if field.name in getattr(mapped_type, _GENERATED_FIELD_KEYS_KEY):
                     namespace = {}
                     if hasattr(mapped_type, _ORIGINAL_TYPE_KEY):

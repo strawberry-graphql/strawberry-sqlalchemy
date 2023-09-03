@@ -1,6 +1,7 @@
 import enum
 from typing import List, Optional
 
+import pytest
 from sqlalchemy import Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.ext.declarative import declarative_base
@@ -8,6 +9,34 @@ from sqlalchemy.orm import relationship
 from strawberry.type import StrawberryOptional
 
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
+
+
+@pytest.fixture
+def mapper():
+    return StrawberrySQLAlchemyMapper()
+
+
+@pytest.fixture
+def polymorphic_employee():
+    Base = declarative_base()
+
+    class Employee(Base):
+        __tablename__ = "employee"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        type = Column(String(50))
+        name = Column(String(50))
+
+        __mapper_args__ = {"polymorphic_identity": "employee", "polymorphic_on": type}
+
+    return Employee
+
+
+@pytest.fixture
+def polymorphic_lawyer(polymorphic_employee):
+    class Lawyer(polymorphic_employee):
+        __mapper_args__ = {"polymorphic_identity": "lawyer"}
+
+    return Lawyer
 
 
 def _create_employee_table():
@@ -233,12 +262,39 @@ def test_type_simple():
     assert len(additional_types) == 1
     mapped_employee_type = additional_types[0]
     assert mapped_employee_type.__name__ == "Employee"
-    assert len(mapped_employee_type._type_definition._fields) == 2
-    employee_type_fields = mapped_employee_type._type_definition._fields
+    assert len(mapped_employee_type.__strawberry_definition__._fields) == 2
+    employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
     name = list(filter(lambda f: f.name == "name", employee_type_fields))[0]
     assert name.type == str
     id = list(filter(lambda f: f.name == "id", employee_type_fields))[0]
     assert id.type == int
+
+
+def test_interface_and_type_polymorphic(
+    mapper, polymorphic_employee, polymorphic_lawyer
+):
+    @mapper.interface(polymorphic_employee)
+    class EmployeeInterface:
+        pass
+
+    @mapper.type(polymorphic_employee)
+    class Employee:
+        pass
+
+    @mapper.type(polymorphic_lawyer)
+    class Lawyer:
+        pass
+
+    mapper.finalize()
+
+    additional_interfaces = list(mapper.mapped_interfaces.values())
+    assert len(additional_interfaces) == 1
+    mapped_employee_interface_type = additional_interfaces[0]
+    assert mapped_employee_interface_type.__name__ == "EmployeeInterface"
+
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 2
+    assert {"Employee", "Lawyer"} == {t.__name__ for t in additional_types}
 
 
 def test_type_relationships():
@@ -254,8 +310,8 @@ def test_type_relationships():
     assert len(additional_types) == 2
     mapped_employee_type = additional_types[0]
     assert mapped_employee_type.__name__ == "Employee"
-    assert len(mapped_employee_type._type_definition._fields) == 4
-    employee_type_fields = mapped_employee_type._type_definition._fields
+    assert len(mapped_employee_type.__strawberry_definition__._fields) == 4
+    employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
     name = list(filter(lambda f: f.name == "department_id", employee_type_fields))[0]
     assert type(name.type) == StrawberryOptional
     id = list(filter(lambda f: f.name == "department", employee_type_fields))[0]
