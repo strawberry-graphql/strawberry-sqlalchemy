@@ -1,0 +1,103 @@
+name: 🆙 Release file check
+
+on:
+  pull_request_target:
+    types: [synchronize, reopened, opened, ready_for_review]
+    branches:
+    - main
+    paths:
+    - "src/strawberry_sqlalchemy_mapper/**"
+    - "pyproject.toml"
+
+jobs:
+  get-contributor-info:
+    name: Get PR info
+    runs-on: ubuntu-latest
+
+    outputs:
+      contributor-name: ${{ steps.get-info.outputs.contributor-name }}
+      contributor-username: ${{ steps.get-info.outputs.contributor-username }}
+      contributor-twitter-username: ${{ steps.get-info.outputs.contributor-twitter-username }}
+
+    steps:
+      - name: Get PR info
+        id: get-info
+        uses: strawberry-graphql/get-pr-info-action@v6
+      - run: echo "${{ steps.get-info.outputs.contributor-twitter-username }}"
+
+  skip-if-bot:
+    name: Set skip if PR is from a bot
+    runs-on: ubuntu-latest
+    needs: get-contributor-info
+
+    outputs:
+      skip: ${{ steps.skip.outputs.skip }}
+
+    steps:
+      - name: Set skip to true if contributor is a bot
+        id: skip
+        shell: python
+        run: |
+          bots = [
+             "dependabot-preview[bot]",
+             "dependabot-preview",
+             "dependabot",
+             "dependabot[bot]",
+           ]
+
+          username = "${{ needs.get-contributor-info.outputs.contributor-username }}"
+
+          if username in bots:
+            print(f"Skipping {username} because it is a bot")
+            print("::set-output name=skip::true")
+          else:
+            print("::set-output name=skip::false")
+
+  release-file-check:
+    name: Release check
+    runs-on: ubuntu-latest
+    needs: skip-if-bot
+    if: needs.skip-if-bot.outputs.skip == 'false'
+
+    outputs:
+      changelog: ${{ steps.release-check.outputs.changelog }}
+      status: ${{ steps.release-check.outputs.release_status }}
+      change_type: ${{ steps.release-check.outputs.change_type }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        ref: "refs/pull/${{ github.event.number }}/merge"
+
+    - name: Release file check
+      uses: ./.github/release-check-action
+      id: release-check
+      if: github.event.pull_request.draft == false
+
+  send-comment:
+    runs-on: ubuntu-latest
+    needs: [release-file-check]
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Send comment
+      uses: ./.github/bot-action
+      env:
+        BOT_API_URL: ${{ secrets.BOT_API_URL }}
+        API_SECRET: ${{ secrets.API_SECRET }}
+      with:
+        pr_number: ${{ github.event.number }}
+        status: ${{ needs.release-file-check.outputs.status }}
+        change_type: ${{ needs.release-file-check.outputs.change_type }}
+        changelog_base64: ${{ needs.release-file-check.outputs.changelog }}
+
+  fail-if-status-is-not-ok:
+    runs-on: ubuntu-latest
+    needs: [release-file-check, send-comment]
+
+    steps:
+    - name: Fail if status is not ok
+      if: ${{ needs.release-file-check.outputs.status != 'OK' }}
+      run: exit 1

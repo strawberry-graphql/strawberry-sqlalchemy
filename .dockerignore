@@ -1,0 +1,8 @@
+.git
+.github
+.benchmarks
+.devcontainer
+.venv
+.mypy_cache
+.nox
+.ruff_cache

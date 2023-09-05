@@ -1,59 +1,39 @@
-exclude: '^docs/conf.py'
-
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.4.0
-  hooks:
-  - id: trailing-whitespace
-  - id: check-added-large-files
-  - id: check-ast
-  - id: check-json
-  - id: check-merge-conflict
-  - id: check-xml
-  - id: check-yaml
-  - id: debug-statements
-  - id: end-of-file-fixer
-  - id: requirements-txt-fixer
-  - id: mixed-line-ending
-    args: ['--fix=auto']  # replace 'auto' with 'lf' to enforce Linux/Mac line endings or 'crlf' for Windows
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        exclude: ^tests/\w+/snapshots/
 
-## If you want to avoid flake8 errors due to unused vars or imports:
-# - repo: https://github.com/myint/autoflake
-#   rev: v1.4
-#   hooks:
-#   - id: autoflake
-#     args: [
-#       --in-place,
-#       --remove-all-unused-imports,
-#       --remove-unused-variables,
-#     ]
-- repo: https://github.com/hadialqattan/pycln
-  rev: v2.1.3
-  hooks:
-    - id: pycln
-      args: [--config=setup.cfg]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.280
+    hooks:
+      - id: ruff
+        exclude: ^tests/\w+/snapshots/
 
-- repo: https://github.com/pycqa/isort
-  rev: 5.12.0
-  hooks:
-  - id: isort
+  - repo: https://github.com/patrick91/pre-commit-alex
+    rev: aa5da9e54b92ab7284feddeaf52edf14b1690de3
+    hooks:
+      - id: alex
+        exclude: (CHANGELOG|TWEET).md
 
-- repo: https://github.com/psf/black
-  rev: 23.3.0
-  hooks:
-  - id: black
-    language_version: python3
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.0
+    hooks:
+      - id: prettier
+        files: '^docs/.*\.mdx?$'
 
-## If like to embrace black styles even in the docs:
-# - repo: https://github.com/asottile/blacken-docs
-#   rev: v1.12.0
-#   hooks:
-#   - id: blacken-docs
-#     additional_dependencies: [black]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+        exclude: ^tests/relay/snapshots
+      - id: check-toml
 
-- repo: https://github.com/PyCQA/flake8
-  rev: 6.0.0
-  hooks:
-  - id: flake8
-  ## You can add flake8 plugins via `additional_dependencies`:
-  #  additional_dependencies: [flake8-bugbear]
+  - repo: https://github.com/adamchainz/blacken-docs
+    rev: 1.15.0
+    hooks:
+      - id: blacken-docs
+        args: [--skip-errors]
