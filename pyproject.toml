@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "strawberry-sqlalchemy-mapper"
-packages = [ { include = "src/strawberry_sqlalchemy_mapper" } ]
+packages = [ { include = "strawberry_sqlalchemy_mapper", from = "src" } ]
 version = "0.1.1"
 description = "A library for autogenerating Strawberry GraphQL types from SQLAlchemy models."
 authors = ["Tim Dumol <tim@timdumol.com>"]
@@ -43,6 +43,7 @@ python = "^3.8"
 sqlalchemy = ">=1.4"
 strawberry-graphql = ">=0.95"
 sentinel = "^0.3.0"
+greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 
 [tool.poetry.group.dev.dependencies]
 black = ">=22,<24"
@@ -56,6 +57,7 @@ pytest-codspeed = "^2.0.1"
 pytest-cov = "^4.0.0"
 pytest-emoji = "^0.2.0"
 pytest-mypy-plugins = ">=1.10,<4.0"
+pytest-xdist = {extras = ["psutil"], version = "^3.1.0"}
 setuptools = ">=67.8.0"
 
 [tool.black]
@@ -238,6 +240,7 @@ exclude = [
 src = ["src/strawberry_sqlalchemy_mapper", "tests"]
 
 [tool.ruff.per-file-ignores]
+"tests/*" = ["RSE102", "SLF001", "TCH001", "TCH002", "TCH003", "ANN001", "ANN201", "PLW0603", "PLC1901", "S603", "S607", "B018"]
 
 [tool.ruff.isort]
 known-first-party = ["strawberry-sqlalchemy-mapper"]
