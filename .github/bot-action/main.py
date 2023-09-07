@@ -33,6 +33,7 @@ mutation_input = {
     "releaseCardUrl": os.environ.get("INPUT_RELEASE_CARD_URL"),
     "tweet": tweet,
     "releaseInfo": release_info,
+    "repo": "strawberry-sqlalchemy",
 }
 
 response = httpx.post(
