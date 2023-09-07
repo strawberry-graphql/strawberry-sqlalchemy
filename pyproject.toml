@@ -48,7 +48,7 @@ greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 [tool.poetry.group.dev.dependencies]
 black = ">=22,<24"
 importlib-metadata = "^4.11.1"
-mypy = "1.4.1"
+mypy = "1.5.1"
 nox = "^2023.4.22"
 nox-poetry = "^1.0.2"
 pytest = "^7.2"
