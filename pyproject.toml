@@ -43,6 +43,7 @@ python = "^3.8"
 sqlalchemy = ">=1.4"
 strawberry-graphql = ">=0.95"
 sentinel = "^0.3.0"
+greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 
 [tool.poetry.group.dev.dependencies]
 black = ">=22,<24"
