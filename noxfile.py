@@ -20,6 +20,9 @@ COMMON_PYTEST_OPTIONS = [
 
 @session(python=PYTHON_VERSIONS, name="Tests", tags=["tests"])
 def tests(session: Session) -> None:
+    session.run_always(
+        "poetry", "run", "pip", "install", "--upgrade", "pip", external=True
+    )
     session.run_always("poetry", "install", external=True)
 
     session.run(

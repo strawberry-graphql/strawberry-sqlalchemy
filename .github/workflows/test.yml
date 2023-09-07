@@ -102,6 +102,7 @@ jobs:
           cache: "poetry"
 
       - run: poetry env use 3.12.0-beta.3
+      - run: poetry run pip install --upgrade pip
       - run: poetry install
         if: steps.setup-python.outputs.cache-hit != 'true'
 
@@ -155,6 +156,7 @@ jobs:
           python-version: "3.11"
           cache: "poetry"
 
+      - run: poetry run pip install --upgrade pip
       - run: poetry install --with integrations
         if: steps.setup-python.outputs.cache-hit != 'true'
 
