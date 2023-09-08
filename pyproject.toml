@@ -42,7 +42,7 @@ version_scheme = "no-guess-dev"
 python = "^3.8"
 sqlalchemy = ">=1.4"
 strawberry-graphql = ">=0.95"
-sentinel = "^0.3.0"
+sentinel = ">=0.3,<1.1"
 greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 
 [tool.poetry.group.dev.dependencies]
