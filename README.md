@@ -222,6 +222,8 @@ Don't forget to tell your contributors to also install and use pre-commit.
 pip install -r requirements.txt
 ```
 
+Install [PostgreSQL 14+](https://www.postgresql.org/download/)
+
 ### Test
 
 ```bash
