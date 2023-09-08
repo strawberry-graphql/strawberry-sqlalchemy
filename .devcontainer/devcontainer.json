@@ -23,4 +23,5 @@
 
   "extensions": ["ms-python.python", "ms-python.vscode-pylance", "eamodio.gitlens"],
   "postCreateCommand": "sh ./.devcontainer/post-install.sh",
+  "postStartCommand": "sh ./.devcontainer/post-start.sh",
 }

@@ -52,6 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: wntrblm/nox@main
+      - uses: ikalnytskyi/action-setup-postgres@v4
         with:
           python-versions: "3.8, 3.9, 3.10, 3.11, 3.12"
 
@@ -148,6 +149,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - uses: ikalnytskyi/action-setup-postgres@v4
       - run: pipx install poetry
       - run: pipx install coverage
       - uses: actions/setup-python@v4
