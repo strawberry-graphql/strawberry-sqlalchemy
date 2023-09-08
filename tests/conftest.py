@@ -8,16 +8,16 @@
 """
 
 import contextlib
+import logging
+import platform
 import socket
-import unittest
 
 import pytest
 import sqlalchemy
 from packaging import version
-from sqlalchemy.engine import Connection, Engine
 from sqlalchemy import orm
-from testing.postgresql import PostgresqlFactory, Postgresql
-
+from sqlalchemy.engine import Engine
+from testing.postgresql import Postgresql, PostgresqlFactory
 
 SQLA_VERSION = version.parse(sqlalchemy.__version__)
 SQLA2 = SQLA_VERSION >= version.parse("2.0")
@@ -31,21 +31,28 @@ def _pick_unused_port():
 
 
 @pytest.fixture(scope="session")
-def _postgresql_factory() -> PostgresqlFactory:
+def postgresql_factory() -> PostgresqlFactory:
     factory = PostgresqlFactory(cache_initialized_db=True, port=_pick_unused_port())
     yield factory
     factory.clear_cache()
 
 
 @pytest.fixture
-def postgresql(_postgresql_factory) -> Postgresql:
-    db = _postgresql_factory()
+def postgresql(postgresql_factory) -> Postgresql:
+    db = postgresql_factory()
     yield db
     db.stop()
 
 
+if platform.system() == "Windows":
+    # Our windows test pipeline doesn't play nice with postgres because
+    # Github Actions doesn't support containers on windows.
+    # It would probably be nicer if we chcked if postgres is installed
+    logging.info("Skipping postgresql tests on Windows OS")
+    SUPPORTED_DBS = []
+else:
+    SUPPORTED_DBS = ["postgresql"]  # TODO: Add sqlite and mysql.
 
-SUPPORTED_DBS = ["postgresql"]  # TODO: Add sqlite and mysql.
 
 @pytest.fixture(params=SUPPORTED_DBS)
 def engine(request) -> Engine:
@@ -57,7 +64,7 @@ def engine(request) -> Engine:
     if not SQLA2:
         kwargs["future"] = True
     engine = sqlalchemy.create_engine(url, **kwargs)
-    yield engine
+    return engine
 
 
 @pytest.fixture
