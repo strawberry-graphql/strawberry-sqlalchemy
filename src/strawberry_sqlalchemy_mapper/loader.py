@@ -2,8 +2,8 @@ from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Tuple, Union
 
 from sqlalchemy import select, tuple_
-from sqlalchemy.engine.base import Connection, Engine
-from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.engine.base import Connection
+from sqlalchemy.orm import RelationshipProperty, Session
 from strawberry.dataloader import DataLoader
 
 
@@ -14,7 +14,7 @@ class StrawberrySQLAlchemyLoader:
 
     _loaders: Dict[RelationshipProperty, DataLoader]
 
-    def __init__(self, bind: Union[Engine, Connection]) -> None:
+    def __init__(self, bind: Union[Session, Connection]) -> None:
         self._loaders = {}
         self.bind = bind
 
