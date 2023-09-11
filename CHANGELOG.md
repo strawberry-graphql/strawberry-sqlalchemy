@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.1.4 - 2023-09-11
+------------------
+
+Makes a series of minor changes to fix lint errors between MyPy and Ruff.
+
+Contributed by [mattalbr](https://github.com/mattalbr) via [PR #38](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/38/)
+
+
 0.1.3 - 2023-09-11
 ------------------
 
