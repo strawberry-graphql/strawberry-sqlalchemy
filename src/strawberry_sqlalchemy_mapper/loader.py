@@ -1,7 +1,8 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Mapping, Tuple
+from typing import Any, Dict, List, Mapping, Tuple, Union
 
 from sqlalchemy import select, tuple_
+from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.orm import RelationshipProperty
 from strawberry.dataloader import DataLoader
 
@@ -13,7 +14,7 @@ class StrawberrySQLAlchemyLoader:
 
     _loaders: Dict[RelationshipProperty, DataLoader]
 
-    def __init__(self, bind) -> None:
+    def __init__(self, bind: Union[Engine, Connection]) -> None:
         self._loaders = {}
         self.bind = bind
 
@@ -29,7 +30,7 @@ class StrawberrySQLAlchemyLoader:
             async def load_fn(keys: List[Tuple]) -> List[Any]:
                 query = select(related_model).filter(
                     tuple_(
-                        *[remote for _, remote in relationship.local_remote_pairs]
+                        *[remote for _, remote in relationship.local_remote_pairs or []]
                     ).in_(keys)
                 )
                 if relationship.order_by:
@@ -40,7 +41,8 @@ class StrawberrySQLAlchemyLoader:
                     return tuple(
                         [
                             getattr(row, remote.key)
-                            for _, remote in relationship.local_remote_pairs
+                            for _, remote in relationship.local_remote_pairs or []
+                            if remote.key
                         ]
                     )
 

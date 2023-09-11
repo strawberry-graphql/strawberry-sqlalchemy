@@ -105,6 +105,7 @@ ignore = [
     # maybe we can enable this in future
     # we'd want to have consistent docstrings in future
     "D",
+    "ANN001", # missing annotation for function argument self.
     "ANN101", # missing annotation for self?
     # definitely enable these, maybe not in tests
     "ANN102",
@@ -168,6 +169,8 @@ ignore = [
     "B027",
     "B905",
     "ISC001",
+
+    "E501",  # Line too long (we enforce black on pre-commit anyway).
 
     # same?
     "S105",
