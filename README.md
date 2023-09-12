@@ -32,19 +32,21 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 class Employee(Base):
-    __tablename__ = 'employee'
+    __tablename__ = "employee"
     id = Column(UUID, primary_key=True)
     name = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
-    department_id = Column(UUID, ForeignKey('department.id'))
-    department = relationship('Department', back_populates='employees')
+    department_id = Column(UUID, ForeignKey("department.id"))
+    department = relationship("Department", back_populates="employees")
+
 
 class Department(Base):
     __tablename__ = "department"
     id = Column(UUID, primary_key=True)
     name = Column(String, nullable=False)
-    employees = relationship('Employee', back_populates='department')
+    employees = relationship("Employee", back_populates="department")
 ```
 
 Next, decorate a type with `strawberry_sqlalchemy_mapper.type()`
@@ -58,6 +60,8 @@ and hybrid properties. For example:
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
 strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+
+
 @strawberry_sqlalchemy_mapper.type(models.Employee)
 class Employee:
     __exclude__ = ["password_hash"]
@@ -66,6 +70,7 @@ class Employee:
 @strawberry_sqlalchemy_mapper.type(models.Department)
 class Department:
     pass
+
 
 @strawberry.type
 class Query:
@@ -80,6 +85,7 @@ class CustomGraphQLView(GraphQLView):
         return {
             "sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=YOUR_SESSION),
         }
+
 
 # call finalize() before using the schema:
 # (note that models that are related to models that are in the schema
@@ -144,6 +150,7 @@ SmallInteger: int,
 SQLAlchemyUUID: uuid.UUID,
 VARCHAR: str,
 ARRAY[T]: List[T] # PostgreSQL array
+JSON: JSON # SQLAlchemy JSON
 Enum: (the Python enum it is mapped to, which should be @strawberry.enum-decorated)
 ```
 
@@ -161,8 +168,10 @@ its descendants are expected to inherit from the interface:
 class Book(Model):
     id = Column(UUID, primary_key=True)
 
+
 class Novel(Book):
     pass
+
 
 class ShortStory(Book):
     pass
@@ -171,17 +180,21 @@ class ShortStory(Book):
 # in another file
 strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
 
+
 @strawberry_sqlalchemy_mapper.interface(models.Book)
 class BookInterface:
     pass
+
 
 @strawberry_sqlalchemy_mapper.type(models.Book)
 class Book:
     pass
 
+
 @strawberry_sqlalchemy_mapper.type(models.Novel)
 class Novel:
     pass
+
 
 @strawberry_sqlalchemy_mapper.type(models.ShortStory)
 class ShortStory:

@@ -32,6 +32,7 @@ import sentinel
 import strawberry
 from sqlalchemy import (
     ARRAY,
+    JSON,
     VARCHAR,
     BigInteger,
     Boolean,
@@ -65,6 +66,7 @@ from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.sql.type_api import TypeEngine
 from strawberry.annotation import StrawberryAnnotation
 from strawberry.field import StrawberryField
+from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.types import Info
 
 from strawberry_sqlalchemy_mapper.exc import (
@@ -131,6 +133,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         SmallInteger: int,
         SQLAlchemyUUID: uuid.UUID,
         VARCHAR: str,
+        JSON: StrawberryJSON,
     }
     #: Mapping from sqlalchemy types to strawberry types
     sqlalchemy_type_to_strawberry_type_map: MutableMapping[

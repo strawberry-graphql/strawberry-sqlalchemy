@@ -2,12 +2,12 @@ import enum
 from typing import List, Optional
 
 import pytest
-from sqlalchemy import Column, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.type import StrawberryOptional
-
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
 
@@ -40,7 +40,7 @@ def polymorphic_lawyer(polymorphic_employee):
 
 
 def _create_employee_table():
-    # todo: use pytest fixtures
+    # TODO: use pytest fixtures
     Base = declarative_base()
 
     class Employee(Base):
@@ -52,7 +52,7 @@ def _create_employee_table():
 
 
 def _create_employee_and_department_tables():
-    # todo: use pytest fixtures
+    # TODO: use pytest fixtures
     Base = declarative_base()
 
     class Employee(Base):
@@ -72,7 +72,7 @@ def _create_employee_and_department_tables():
 
 
 def _create_polymorphic_employee_table():
-    # todo: use pytest fixtures
+    # TODO: use pytest fixtures
     Base = declarative_base()
 
     class Employee(Base):
@@ -154,6 +154,20 @@ def test_get_polymorphic_base_model():
     )
 
 
+def test_convert_all_columns_to_strawberry_type(mapper):
+    strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
+    for (
+        sqlalchemy_type,
+        strawberry_type,
+    ) in mapper.sqlalchemy_type_to_strawberry_type_map.items():
+        assert (
+            strawberry_sqlalchemy_mapper._convert_column_to_strawberry_type(
+                Column(sqlalchemy_type, nullable=False)
+            )
+            == strawberry_type
+        )
+
+
 def test_convert_column_to_strawberry_type():
     strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper()
     int_column = Column(Integer, nullable=False)
@@ -166,6 +180,11 @@ def test_convert_column_to_strawberry_type():
         strawberry_sqlalchemy_mapper._convert_column_to_strawberry_type(string_column)
         == str
     )
+
+
+def test_convert_json_column_to_strawberry_type(mapper):
+    json_colum = Column(JSON, nullable=False)
+    assert mapper._convert_column_to_strawberry_type(json_colum) == StrawberryJSON
 
 
 def test_convert_array_column_to_strawberry_type():
@@ -264,9 +283,9 @@ def test_type_simple():
     assert mapped_employee_type.__name__ == "Employee"
     assert len(mapped_employee_type.__strawberry_definition__._fields) == 2
     employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
-    name = list(filter(lambda f: f.name == "name", employee_type_fields))[0]
+    name = next(iter(filter(lambda f: f.name == "name", employee_type_fields)))
     assert name.type == str
-    id = list(filter(lambda f: f.name == "id", employee_type_fields))[0]
+    id = next(iter(filter(lambda f: f.name == "id", employee_type_fields)))
     assert id.type == int
 
 
@@ -312,7 +331,7 @@ def test_type_relationships():
     assert mapped_employee_type.__name__ == "Employee"
     assert len(mapped_employee_type.__strawberry_definition__._fields) == 4
     employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
-    name = list(filter(lambda f: f.name == "department_id", employee_type_fields))[0]
+    name = next(iter(filter(lambda f: f.name == "department_id", employee_type_fields)))
     assert type(name.type) == StrawberryOptional
-    id = list(filter(lambda f: f.name == "department", employee_type_fields))[0]
+    id = next(iter(filter(lambda f: f.name == "department", employee_type_fields)))
     assert type(id.type) == StrawberryOptional
