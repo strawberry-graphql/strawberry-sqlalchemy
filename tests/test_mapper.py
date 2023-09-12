@@ -283,9 +283,9 @@ def test_type_simple():
     assert mapped_employee_type.__name__ == "Employee"
     assert len(mapped_employee_type.__strawberry_definition__._fields) == 2
     employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
-    name = next(iter(filter(lambda f: f.name == "name", employee_type_fields)))
+    name = list(filter(lambda f: f.name == "name", employee_type_fields))
     assert name.type == str
-    id = next(iter(filter(lambda f: f.name == "id", employee_type_fields)))
+    id = list(filter(lambda f: f.name == "id", employee_type_fields))
     assert id.type == int
 
 
@@ -331,7 +331,7 @@ def test_type_relationships():
     assert mapped_employee_type.__name__ == "Employee"
     assert len(mapped_employee_type.__strawberry_definition__._fields) == 4
     employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
-    name = next(iter(filter(lambda f: f.name == "department_id", employee_type_fields)))
+    name = list(filter(lambda f: f.name == "department_id", employee_type_fields))
     assert type(name.type) == StrawberryOptional
-    id = next(iter(filter(lambda f: f.name == "department", employee_type_fields)))
+    id = list(filter(lambda f: f.name == "department", employee_type_fields))
     assert type(id.type) == StrawberryOptional
