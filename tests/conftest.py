@@ -73,5 +73,5 @@ def sessionmaker(engine) -> orm.sessionmaker:
 
 
 @pytest.fixture
-def Base():
+def base():
     return orm.declarative_base()

@@ -1,25 +1,21 @@
-import asyncio
-import unittest
-
 import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
-
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader
-
 
 pytest_plugins = ("pytest_asyncio",)
 
 
-def _create_many_to_one_tables(Base):
-    class Employee(Base):
+@pytest.fixture
+def many_to_one_tables(base):
+    class Employee(base):
         __tablename__ = "employee"
         id = Column(Integer, autoincrement=True, primary_key=True)
         name = Column(String, nullable=False)
         department_id = Column(Integer, ForeignKey("department.id"))
         department = relationship("Department", back_populates="employees")
 
-    class Department(Base):
+    class Department(base):
         __tablename__ = "department"
         id = Column(Integer, autoincrement=True, primary_key=True)
         name = Column(String, nullable=False)
@@ -28,32 +24,33 @@ def _create_many_to_one_tables(Base):
     return Employee, Department
 
 
-def _create_secondary_tables(Base):
+@pytest.fixture
+def secondary_tables(base):
     EmployeeDepartmentJoinTable = Table(
         "employee_department_join_table",
-        Base.metadata,
+        base.metadata,
         Column("employee_id", ForeignKey("employee.e_id"), primary_key=True),
-        Column("department_id", ForeignKey("department.d_id"), primary_key=True)
+        Column("department_id", ForeignKey("department.d_id"), primary_key=True),
     )
 
-    class Employee(Base):
+    class Employee(base):
         __tablename__ = "employee"
         e_id = Column(Integer, autoincrement=True, primary_key=True)
         name = Column(String, nullable=False)
         departments = relationship(
             "Department",
             secondary="employee_department_join_table",
-            back_populates="employees"
+            back_populates="employees",
         )
 
-    class Department(Base):
+    class Department(base):
         __tablename__ = "department"
         d_id = Column(Integer, autoincrement=True, primary_key=True)
         name = Column(String, nullable=False)
         employees = relationship(
             "Employee",
             secondary="employee_department_join_table",
-            back_populates="departments"
+            back_populates="departments",
         )
 
     return Employee, Department
@@ -66,9 +63,9 @@ def test_loader_init():
 
 
 @pytest.mark.asyncio
-async def test_loader_for(engine, Base, sessionmaker):
-    Employee, Department = _create_many_to_one_tables(Base)
-    Base.metadata.create_all(engine)
+async def test_loader_for(engine, base, sessionmaker, many_to_one_tables):
+    Employee, Department = many_to_one_tables
+    base.metadata.create_all(engine)
 
     with sessionmaker() as session:
         e1 = Employee(name="e1")
@@ -92,21 +89,31 @@ async def test_loader_for(engine, Base, sessionmaker):
         assert loader._loop is None
         assert loader.load_fn is not None
 
-        key = tuple([getattr(e1, local.key) for local, _ in Employee.department.property.local_remote_pairs])
+        key = tuple(
+            [
+                getattr(e1, local.key)
+                for local, _ in Employee.department.property.local_remote_pairs
+            ]
+        )
         department = await loader.load(key)
         assert department.name == "d2"
 
         loader = base_loader.loader_for(Department.employees.property)
-        key = tuple([getattr(d2, local.key) for local, _ in Department.employees.property.local_remote_pairs])
+        key = tuple(
+            [
+                getattr(d2, local.key)
+                for local, _ in Department.employees.property.local_remote_pairs
+            ]
+        )
         employees = await loader.load((d2.id,))
         assert {e.name for e in employees} == {"e1"}
 
 
 @pytest.mark.xfail
 @pytest.mark.asyncio
-async def test_loader_for_secondary(engine, Base, sessionmaker):
-    Employee, Department = _create_secondary_tables(Base)
-    Base.metadata.create_all(engine)
+async def test_loader_for_secondary(engine, base, sessionmaker, secondary_tables):
+    Employee, Department = secondary_tables
+    base.metadata.create_all(engine)
 
     with sessionmaker() as session:
         e1 = Employee(name="e1")
@@ -124,9 +131,14 @@ async def test_loader_for_secondary(engine, Base, sessionmaker):
         e2.departments.append(d2)
         session.commit()
 
-        base_loader=StrawberrySQLAlchemyLoader(bind=session)
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
         loader = base_loader.loader_for(Employee.departments.property)
 
-        key = tuple([getattr(e1, local.key) for local, _ in Employee.departments.property.local_remote_pairs])
+        key = tuple(
+            [
+                getattr(e1, local.key)
+                for local, _ in Employee.departments.property.local_remote_pairs
+            ]
+        )
         departments = await loader.load(key)
         assert {d.name for d in departments} == {"d1", "d2"}
