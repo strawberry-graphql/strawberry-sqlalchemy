@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.2.0 - 2023-09-15
+------------------
+
+Native SQLAlchemy JSON Conversion Support. Added native support for SQLAlchemy JSON conversions. Now, you'll find that `sqlalchemy.JSON` is converted to `strawberry.scalars.JSON` for enhanced compatibility.
+
+Contributed by [Luis Gustavo](https://github.com/Ckk3) via [PR #40](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/40/)
+
+
 0.1.4 - 2023-09-11
 ------------------
 
