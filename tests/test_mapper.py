@@ -2,9 +2,10 @@ import enum
 from typing import List, Optional
 
 import pytest
-from sqlalchemy import Column, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.orm import relationship
+from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.type import StrawberryOptional
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
@@ -133,11 +134,29 @@ def test_get_polymorphic_base_model(polymorphic_employee_table, mapper):
     assert mapper._get_polymorphic_base_model(ParaLegal) == Employee
 
 
+def test_convert_all_columns_to_strawberry_type(mapper):
+    for (
+        sqlalchemy_type,
+        strawberry_type,
+    ) in mapper.sqlalchemy_type_to_strawberry_type_map.items():
+        assert (
+            mapper._convert_column_to_strawberry_type(
+                Column(sqlalchemy_type, nullable=False)
+            )
+            == strawberry_type
+        )
+
+
 def test_convert_column_to_strawberry_type(mapper):
     int_column = Column(Integer, nullable=False)
     assert mapper._convert_column_to_strawberry_type(int_column) == int
     string_column = Column(String, nullable=False)
     assert mapper._convert_column_to_strawberry_type(string_column) == str
+
+
+def test_convert_json_column_to_strawberry_type(mapper):
+    json_colum = Column(JSON, nullable=False)
+    assert mapper._convert_column_to_strawberry_type(json_colum) == StrawberryJSON
 
 
 def test_convert_array_column_to_strawberry_type(mapper):
