@@ -18,8 +18,8 @@ COMMON_PYTEST_OPTIONS = [
 ]
 
 
-@session(python=PYTHON_VERSIONS, name="Tests", tags=["tests"])
-def tests(session: Session) -> None:
+@session(python=PYTHON_VERSIONS, name="SQLAlchemy 2.0 Tests", tags=["tests"])
+def tests_sqlalchemy_latest(session: Session) -> None:
     session.run_always(
         "poetry",
         "run",
@@ -32,6 +32,29 @@ def tests(session: Session) -> None:
         external=True,
     )
     session.run_always("poetry", "install", external=True)
+
+    session.run(
+        "pytest",
+        *COMMON_PYTEST_OPTIONS,
+    )
+
+
+# No need for now to run 1.4 against all 5 python versions.
+@session(python="3.11", name="Sqlalchemy 1.4 Tests", tags=["tests"])
+def tests_sqlalchemy_1_4(session: Session) -> None:
+    session.run_always(
+        "poetry",
+        "run",
+        "pip",
+        "install",
+        "--upgrade",
+        "pip",
+        "setuptools",
+        "wheel",
+        external=True,
+    )
+    session.run_always("poetry", "install", external=True)
+    session._session.install("sqlalchemy~=1.4")
 
     session.run(
         "pytest",
