@@ -654,18 +654,18 @@ files = [
 
 [[package]]
 name = "pg8000"
-version = "1.30.1"
+version = "1.30.2"
 description = "PostgreSQL interface library"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pg8000-1.30.1-py3-none-any.whl", hash = "sha256:4700e34a01d16c41c923982ff78930e85bbd819aea875f9bc17044eb756125a9"},
-    {file = "pg8000-1.30.1.tar.gz", hash = "sha256:c04280e66a1ccfb5166db5c164164c2e1b8f62afaedffd211451a5329ae84a29"},
+    {file = "pg8000-1.30.2-py3-none-any.whl", hash = "sha256:2fc6bf2d81d7025529e7d161f6b0202a6328e8ac5b665e77be1d72ae5cc1c980"},
+    {file = "pg8000-1.30.2.tar.gz", hash = "sha256:3b35dabc7c2f72d403a8bb785ce28f32aeaa9493e7a72de6bce58ac575409bc1"},
 ]
 
 [package.dependencies]
 python-dateutil = ">=2.8.2"
-scramp = ">=1.4.3"
+scramp = ">=1.4.4"
 
 [[package]]
 name = "platformdirs"
