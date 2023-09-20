@@ -14,9 +14,10 @@ class StrawberrySQLAlchemyLoader:
 
     _loaders: Dict[RelationshipProperty, DataLoader]
 
-    def __init__(self, bind: Union[Session, Connection]) -> None:
+    def __init__(self, bind: Union[Session, Connection], executor=None) -> None:
         self._loaders = {}
         self.bind = bind
+        self.executor = executor
 
     def loader_for(self, relationship: RelationshipProperty) -> DataLoader:
         """
