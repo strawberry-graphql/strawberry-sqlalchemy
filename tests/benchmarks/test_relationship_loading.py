@@ -102,7 +102,12 @@ def test_load_many_relationships(
                     }
                 }
                 """,
-                context_value={"session": session},
+                context_value={
+                    "session": session,
+                    "sqlalchemy_loader": strawberry_sqlalchemy_mapper.StrawberrySQLAlchemyLoader(
+                        bind=session
+                    ),
+                },
             )
 
     benchmark(async_to_sync(execute))
