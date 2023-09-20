@@ -1,3 +1,6 @@
+import asyncio
+import contextvars
+import functools
 from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Tuple, Union
 
@@ -36,7 +39,11 @@ class StrawberrySQLAlchemyLoader:
                 )
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
-                rows = self.bind.scalars(query).all()
+
+                loop = asyncio.events.get_running_loop()
+                ctx = contextvars.copy_context()
+                func_call = functools.partial(ctx.run, self.bind.scalars(query).all)
+                rows = await loop.run_in_executor(self.executor, func_call)
 
                 def group_by_remote_key(row: Any) -> Tuple:
                     return tuple(
