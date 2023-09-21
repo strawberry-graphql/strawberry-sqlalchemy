@@ -919,6 +919,23 @@ files = [
 pytest = ">=4.2.1"
 
 [[package]]
+name = "pytest-mock"
+version = "3.11.1"
+description = "Thin-wrapper around the mock package for easier use with pytest"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pytest-mock-3.11.1.tar.gz", hash = "sha256:7f6b125602ac6d743e523ae0bfa71e1a697a2f5534064528c6ff84c2f7c2fc7f"},
+    {file = "pytest_mock-3.11.1-py3-none-any.whl", hash = "sha256:21c279fff83d70763b05f8874cc9cfb3fcacd6d354247a976f9529d19f9acf39"},
+]
+
+[package.dependencies]
+pytest = ">=5.0"
+
+[package.extras]
+dev = ["pre-commit", "pytest-asyncio", "tox"]
+
+[[package]]
 name = "pytest-mypy-plugins"
 version = "3.0.0"
 description = "pytest plugin for writing tests for mypy plugins"
@@ -1414,4 +1431,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "7e2aae6ab096a311b4edcf6edac91d32cac2c0c16638ca0cebb0bb559bb41a08"
+content-hash = "dc05ea266856a08d60e5132743d5e991e38f2c184a1c48ddce948dd6a4d62aee"
