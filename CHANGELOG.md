@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.2.1 - 2023-09-21
+------------------
+
+Fix typo in pyproject.toml for poetry build.
+
+Contributed by [Dan Sully](https://github.com/dsully) via [PR #52](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/52/)
+
+
 0.2.0 - 2023-09-15
 ------------------
 
