@@ -2,7 +2,8 @@ import asyncio
 import contextvars
 import functools
 from collections import defaultdict
-from typing import Any, Dict, List, Mapping, Tuple, Union
+from concurrent.futures import Executor
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 from sqlalchemy import select, tuple_
 from sqlalchemy.engine.base import Connection
@@ -17,7 +18,9 @@ class StrawberrySQLAlchemyLoader:
 
     _loaders: Dict[RelationshipProperty, DataLoader]
 
-    def __init__(self, bind: Union[Session, Connection], executor=None) -> None:
+    def __init__(
+        self, bind: Union[Session, Connection], executor: Optional[Executor] = None
+    ) -> None:
         self._loaders = {}
         self.bind = bind
         self.executor = executor

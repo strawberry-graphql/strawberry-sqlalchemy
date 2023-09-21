@@ -59,7 +59,7 @@ def test_load_many_relationships(
         @strawberry.field
         @staticmethod
         async def parents(info: Info) -> List[StrawberryParent]:
-            return info.context["session"].execute(sa.select(Parent)).all()
+            return info.context["session"].query(Parent).all()
 
     mapper.finalize()
     base.metadata.create_all(engine)
@@ -90,15 +90,15 @@ def test_load_many_relationships(
             # Notice how we use a sync session but call Strawberry's async execute.
             # This is not an ideal combination, but it's certainly a common one that
             # we need to support efficiently.
-            await schema.execute(
+            result = await schema.execute(
                 """
                 query {
                     parents {
-                        a { edges { node { id } } },
-                        b { edges { node { id } } },
-                        c { edges { node { id } } },
-                        d { edges { node { id } } },
-                        e { edges { node { id } } },
+                        a { id },
+                        b { id },
+                        c { id },
+                        d { id },
+                        e { id },
                     }
                 }
                 """,
@@ -109,5 +109,7 @@ def test_load_many_relationships(
                     ),
                 },
             )
+            assert not result.errors
+            assert len(result.data["parents"]) == 10
 
     benchmark(async_to_sync(execute))
