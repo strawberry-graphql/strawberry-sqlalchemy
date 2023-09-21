@@ -17,6 +17,9 @@ import sqlalchemy
 from packaging import version
 from sqlalchemy import orm
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext import asyncio
+from sqlalchemy.ext.asyncio import AsyncAttrs, create_async_engine
+from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from testing.postgresql import Postgresql, PostgresqlFactory
 
 SQLA_VERSION = version.parse(sqlalchemy.__version__)
@@ -57,7 +60,11 @@ else:
 @pytest.fixture(params=SUPPORTED_DBS)
 def engine(request) -> Engine:
     if request.param == "postgresql":
-        url = request.getfixturevalue("postgresql").url()
+        url = (
+            request.getfixturevalue("postgresql")
+            .url()
+            .replace("postgresql://", "postgresql+psycopg2://")
+        )
     else:
         raise ValueError("Unsupported database: %s", request.param)
     kwargs = {}
@@ -72,6 +79,31 @@ def sessionmaker(engine) -> orm.sessionmaker:
     return orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+@pytest.fixture(params=SUPPORTED_DBS)
+def async_engine(request) -> AsyncEngine:
+    if request.param == "postgresql":
+        url = (
+            request.getfixturevalue("postgresql")
+            .url()
+            .replace("postgresql://", "postgresql+asyncpg://")
+        )
+    else:
+        raise ValueError("Unsupported database: %s", request.param)
+    kwargs = {}
+    if not SQLA2:
+        kwargs["future"] = True
+    engine = create_async_engine(url, **kwargs)
+    return engine
+
+
+@pytest.fixture
+def async_sessionmaker(async_engine) -> asyncio.async_sessionmaker:
+    return asyncio.async_sessionmaker(async_engine)
+
+
 @pytest.fixture
 def base():
-    return orm.declarative_base()
+    class Base(AsyncAttrs, orm.DeclarativeBase):
+        pass
+
+    return Base
