@@ -1,3 +1,4 @@
+import time
 from typing import List
 
 import pytest
@@ -7,13 +8,12 @@ import strawberry
 import strawberry_sqlalchemy_mapper
 from asgiref.sync import async_to_sync
 from pytest_codspeed.plugin import BenchmarkFixture
+from sqlalchemy import orm
 from strawberry.types import Info
 
 
-@pytest.mark.benchmark
-def test_load_many_relationships(
-    benchmark: BenchmarkFixture, engine, base, sessionmaker
-):
+@pytest.fixture
+def populated_tables(engine, base, sessionmaker):
     class A(base):
         __tablename__ = "a"
         id = sa.Column(sa.Integer, autoincrement=True, primary_key=True)
@@ -48,24 +48,7 @@ def test_load_many_relationships(
         d = sa.orm.relationship("D", backref="parents")
         e = sa.orm.relationship("E", backref="parents")
 
-    mapper = strawberry_sqlalchemy_mapper.StrawberrySQLAlchemyMapper()
-
-    @mapper.type(Parent)
-    class StrawberryParent:
-        pass
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        @staticmethod
-        async def parents(info: Info) -> List[StrawberryParent]:
-            return info.context["session"].scalars(sa.select(Parent)).all()
-
-    mapper.finalize()
     base.metadata.create_all(engine)
-
-    schema = strawberry.Schema(Query)
-
     with sessionmaker() as session:
         for _ in range(1000):
             session.add(A())
@@ -84,6 +67,43 @@ def test_load_many_relationships(
             )
             session.add(parent)
         session.commit()
+
+    return A, B, C, D, E, Parent
+
+
+@pytest.mark.benchmark
+def test_load_many_relationships(
+    benchmark: BenchmarkFixture, populated_tables, sessionmaker, mocker
+):
+    A, B, C, D, E, Parent = populated_tables
+
+    mapper = strawberry_sqlalchemy_mapper.StrawberrySQLAlchemyMapper()
+
+    @mapper.type(Parent)
+    class StrawberryParent:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        @staticmethod
+        async def parents(info: Info) -> List[StrawberryParent]:
+            return info.context["session"].scalars(sa.select(Parent)).all()
+
+    mapper.finalize()
+
+    schema = strawberry.Schema(Query)
+
+    # Now that we've seeded the database, let's add some delay to simulate network lag
+    # to the database.
+    old_execute_internal = orm.Session._execute_internal
+    mocker.patch.object(orm.Session, "_execute_internal", autospec=True)
+
+    def sleep_then_execute(self, *args, **kwargs):
+        time.sleep(0.01)
+        return old_execute_internal(self, *args, **kwargs)
+
+    orm.Session._execute_internal.side_effect = sleep_then_execute
 
     async def execute():
         with sessionmaker() as session:
@@ -111,5 +131,69 @@ def test_load_many_relationships(
             )
             assert not result.errors
             assert len(result.data["parents"]) == 10
+
+    benchmark(async_to_sync(execute))
+
+
+@pytest.mark.benchmark
+def test_load_many_relationships_async(
+    benchmark: BenchmarkFixture, populated_tables, async_sessionmaker, mocker
+):
+    A, B, C, D, E, Parent = populated_tables
+
+    mapper = strawberry_sqlalchemy_mapper.StrawberrySQLAlchemyMapper()
+
+    @mapper.type(Parent)
+    class StrawberryParent:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        @staticmethod
+        async def parents(info: Info) -> List[StrawberryParent]:
+            async with info.context["async_sessionmaker"]() as session:
+                return (await session.scalars(sa.select(Parent))).all()
+
+    mapper.finalize()
+
+    schema = strawberry.Schema(Query)
+
+    # Now that we've seeded the database, let's add some delay to simulate network lag
+    # to the database.
+    old_execute_internal = orm.Session._execute_internal
+    mocker.patch.object(orm.Session, "_execute_internal", autospec=True)
+
+    def sleep_then_execute(self, *args, **kwargs):
+        time.sleep(0.01)
+        return old_execute_internal(self, *args, **kwargs)
+
+    orm.Session._execute_internal.side_effect = sleep_then_execute
+
+    async def execute():
+        # Notice how we use a sync session but call Strawberry's async execute.
+        # This is not an ideal combination, but it's certainly a common one that
+        # we need to support efficiently.
+        result = await schema.execute(
+            """
+            query {
+                parents {
+                    a { id },
+                    b { id },
+                    c { id },
+                    d { id },
+                    e { id },
+                }
+            }
+            """,
+            context_value={
+                "async_sessionmaker": async_sessionmaker,
+                "sqlalchemy_loader": strawberry_sqlalchemy_mapper.StrawberrySQLAlchemyLoader(
+                    async_bind_factory=async_sessionmaker
+                ),
+            },
+        )
+        assert not result.errors
+        assert len(result.data["parents"]) == 10
 
     benchmark(async_to_sync(execute))

@@ -43,7 +43,8 @@ class StrawberrySQLAlchemyLoader:
 
     async def _scalars(self, *args, **kwargs):
         if self._async_bind_factory:
-            return await self._async_bind_factory().scalars(*args, **kwargs)
+            async with self._async_bind_factory() as bind:
+                return await bind.scalars(*args, **kwargs)
         else:
             # Deprecated, but supported for now.
             assert self._bind is not None
