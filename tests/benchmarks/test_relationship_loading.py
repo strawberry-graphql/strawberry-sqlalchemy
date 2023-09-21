@@ -59,7 +59,7 @@ def test_load_many_relationships(
         @strawberry.field
         @staticmethod
         async def parents(info: Info) -> List[StrawberryParent]:
-            return info.context["session"].query(Parent).all()
+            return info.context["session"].scalars(sa.select(Parent)).all()
 
     mapper.finalize()
     base.metadata.create_all(engine)
