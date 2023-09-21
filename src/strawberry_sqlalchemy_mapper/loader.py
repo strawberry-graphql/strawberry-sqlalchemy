@@ -46,6 +46,7 @@ class StrawberrySQLAlchemyLoader:
             return await self._async_bind_factory().scalars(*args, **kwargs)
         else:
             # Deprecated, but supported for now.
+            assert self._bind is not None
             return self._bind.scalars(*args, **kwargs)
 
     def loader_for(self, relationship: RelationshipProperty) -> DataLoader:
