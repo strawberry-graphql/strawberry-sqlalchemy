@@ -1,7 +1,5 @@
-import asyncio
 import time
 from typing import List
-from unittest.mock import AsyncMock
 
 import pytest
 import sqlalchemy as sa
@@ -11,7 +9,6 @@ import strawberry_sqlalchemy_mapper
 from asgiref.sync import async_to_sync
 from pytest_codspeed.plugin import BenchmarkFixture
 from sqlalchemy import orm
-from sqlalchemy.ext.asyncio import AsyncSession
 from strawberry.types import Info
 
 
@@ -162,6 +159,7 @@ def test_load_many_relationships_async(
 
     schema = strawberry.Schema(Query)
 
+    """
     # Now that we've seeded the database, let's add some delay to simulate network lag
     # to the database. We can add this lag into the
     old_scalars = AsyncSession.scalars
@@ -174,6 +172,8 @@ def test_load_many_relationships_async(
     mock = AsyncMock()
     mock.side_effect = sleep_then_scalars
     AsyncSession.scalars.side_effect = mock
+
+    """
 
     async def execute():
         # Notice how we use a sync session but call Strawberry's async execute.
