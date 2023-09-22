@@ -8,15 +8,20 @@
 """
 
 import contextlib
+import functools
 import logging
 import platform
 import socket
+from typing import Callable
 
 import pytest
 import sqlalchemy
 from packaging import version
 from sqlalchemy import orm
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext import asyncio
+from sqlalchemy.ext.asyncio import AsyncAttrs, create_async_engine
+from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from testing.postgresql import Postgresql, PostgresqlFactory
 
 SQLA_VERSION = version.parse(sqlalchemy.__version__)
@@ -55,16 +60,24 @@ else:
 
 
 @pytest.fixture(params=SUPPORTED_DBS)
-def engine(request) -> Engine:
+def engine_factory(request) -> Engine:
     if request.param == "postgresql":
-        url = request.getfixturevalue("postgresql").url()
+        url = (
+            request.getfixturevalue("postgresql")
+            .url()
+            .replace("postgresql://", "postgresql+psycopg://")
+        )
     else:
         raise ValueError("Unsupported database: %s", request.param)
     kwargs = {}
     if not SQLA2:
         kwargs["future"] = True
-    engine = sqlalchemy.create_engine(url, **kwargs)
-    return engine
+    return functools.partial(sqlalchemy.create_engine, url, **kwargs)
+
+
+@pytest.fixture
+def engine(engine_factory) -> Engine:
+    return engine_factory()
 
 
 @pytest.fixture
@@ -72,6 +85,36 @@ def sessionmaker(engine) -> orm.sessionmaker:
     return orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+@pytest.fixture(params=SUPPORTED_DBS)
+def async_engine_factory(request) -> Callable[[], AsyncEngine]:
+    """Needed to benchmark async code which can't share engines across threads."""
+    if request.param == "postgresql":
+        url = (
+            request.getfixturevalue("postgresql")
+            .url()
+            .replace("postgresql://", "postgresql+psycopg://")
+        )
+    else:
+        raise ValueError("Unsupported database: %s", request.param)
+    kwargs = {}
+    if not SQLA2:
+        kwargs["future"] = True
+    return functools.partial(create_async_engine, url, **kwargs)
+
+
+@pytest.fixture
+def async_engine(async_engine_factory) -> AsyncEngine:
+    return async_engine_factory()
+
+
+@pytest.fixture
+def async_sessionmaker(async_engine) -> asyncio.async_sessionmaker:
+    return asyncio.async_sessionmaker(async_engine)
+
+
 @pytest.fixture
 def base():
-    return orm.declarative_base()
+    class Base(AsyncAttrs, orm.DeclarativeBase):
+        pass
+
+    return Base
