@@ -134,7 +134,10 @@ def test_load_many_relationships(
             assert not result.errors
             assert len(result.data["parents"]) == 10
 
-    benchmark(asyncio.run, execute())
+    def execute_sync():
+        asyncio.run(execute())
+
+    benchmark(execute_sync)
 
 
 @pytest.mark.benchmark
@@ -200,4 +203,7 @@ def test_load_many_relationships_async(
         assert not result.errors
         assert len(result.data["parents"]) == 10
 
-    benchmark(asyncio.run, execute())
+    def execute_sync():
+        asyncio.run(execute())
+
+    benchmark(execute_sync)
