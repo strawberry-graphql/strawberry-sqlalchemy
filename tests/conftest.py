@@ -60,7 +60,7 @@ else:
 
 
 @pytest.fixture(params=SUPPORTED_DBS)
-def engine(request) -> Engine:
+def engine_factory(request) -> Engine:
     if request.param == "postgresql":
         url = (
             request.getfixturevalue("postgresql")
@@ -72,8 +72,12 @@ def engine(request) -> Engine:
     kwargs = {}
     if not SQLA2:
         kwargs["future"] = True
-    engine = sqlalchemy.create_engine(url, **kwargs)
-    return engine
+    return functools.partial(sqlalchemy.create_engine, url, **kwargs)
+
+
+@pytest.fixture
+def engine(engine_factory) -> Engine:
+    return engine_factory()
 
 
 @pytest.fixture

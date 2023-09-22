@@ -12,6 +12,7 @@ import strawberry_sqlalchemy_mapper
 from pytest_codspeed.plugin import BenchmarkFixture
 from sqlalchemy import orm
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.pool import NullPool
 from strawberry.types import Info
 
 
@@ -76,7 +77,7 @@ def populated_tables(engine, base, sessionmaker):
 
 @pytest.mark.benchmark
 def test_load_many_relationships(
-    benchmark: BenchmarkFixture, populated_tables, sessionmaker, mocker
+    benchmark: BenchmarkFixture, populated_tables, engine_factory, mocker
 ):
     A, B, C, D, E, Parent = populated_tables
 
@@ -109,6 +110,8 @@ def test_load_many_relationships(
     orm.Session._execute_internal.side_effect = sleep_then_execute
 
     async def execute():
+        engine = engine_factory(poolclass=NullPool)
+        sessionmaker = orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
         with sessionmaker() as session:
             # Notice how we use a sync session but call Strawberry's async execute.
             # This is not an ideal combination, but it's certainly a common one that
@@ -182,7 +185,7 @@ def test_load_many_relationships_async(
         # Notice how we use a sync session but call Strawberry's async execute.
         # This is not an ideal combination, but it's certainly a common one that
         # we need to support efficiently.
-        engine = async_engine_factory()
+        engine = async_engine_factory(poolclass=NullPool)
         sessionmaker = sqlalchemy.ext.asyncio.async_sessionmaker(engine)
         result = await schema.execute(
             """
