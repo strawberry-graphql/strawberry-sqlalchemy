@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 import sqlalchemy as sa
+import sqlalchemy.ext.asyncio
 import sqlalchemy.orm
 import strawberry
 import strawberry_sqlalchemy_mapper
@@ -142,7 +143,7 @@ def test_load_many_relationships(
 
 @pytest.mark.benchmark
 def test_load_many_relationships_async(
-    benchmark: BenchmarkFixture, populated_tables, async_sessionmaker, mocker
+    benchmark: BenchmarkFixture, populated_tables, async_engine_factory, mocker
 ):
     A, B, C, D, E, Parent = populated_tables
 
@@ -181,6 +182,8 @@ def test_load_many_relationships_async(
         # Notice how we use a sync session but call Strawberry's async execute.
         # This is not an ideal combination, but it's certainly a common one that
         # we need to support efficiently.
+        engine = async_engine_factory()
+        sessionmaker = sqlalchemy.ext.asyncio.async_sessionmaker(engine)
         result = await schema.execute(
             """
             query {
@@ -194,9 +197,9 @@ def test_load_many_relationships_async(
             }
             """,
             context_value={
-                "async_sessionmaker": async_sessionmaker,
+                "async_sessionmaker": sessionmaker,
                 "sqlalchemy_loader": strawberry_sqlalchemy_mapper.StrawberrySQLAlchemyLoader(
-                    async_bind_factory=async_sessionmaker
+                    async_bind_factory=sessionmaker
                 ),
             },
         )

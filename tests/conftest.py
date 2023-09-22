@@ -8,9 +8,11 @@
 """
 
 import contextlib
+import functools
 import logging
 import platform
 import socket
+from typing import Callable
 
 import pytest
 import sqlalchemy
@@ -80,7 +82,8 @@ def sessionmaker(engine) -> orm.sessionmaker:
 
 
 @pytest.fixture(params=SUPPORTED_DBS)
-def async_engine(request) -> AsyncEngine:
+def async_engine_factory(request) -> Callable[[], AsyncEngine]:
+    """Needed to benchmark async code which can't share engines across threads."""
     if request.param == "postgresql":
         url = (
             request.getfixturevalue("postgresql")
@@ -92,8 +95,12 @@ def async_engine(request) -> AsyncEngine:
     kwargs = {}
     if not SQLA2:
         kwargs["future"] = True
-    engine = create_async_engine(url, **kwargs)
-    return engine
+    return functools.partial(create_async_engine, url, **kwargs)
+
+
+@pytest.fixture
+def async_engine(async_engine_factory) -> AsyncEngine:
+    return async_engine_factory()
 
 
 @pytest.fixture
