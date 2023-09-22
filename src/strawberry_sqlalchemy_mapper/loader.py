@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, AsyncIterator, Dict, List, Mapping, Optional, Tuple, Union
 
 from sqlalchemy import select, tuple_
 from sqlalchemy.engine.base import Connection
@@ -20,7 +20,7 @@ class StrawberrySQLAlchemyLoader:
         self,
         bind: Union[Session, Connection, None] = None,
         async_bind_factory: Optional[
-            Callable[[], Union[AsyncSession, AsyncConnection]]
+            Union[AsyncIterator[AsyncSession], AsyncIterator[AsyncConnection]]
         ] = None,
     ) -> None:
         self._loaders = {}
