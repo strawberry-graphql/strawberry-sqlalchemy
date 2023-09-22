@@ -44,22 +44,12 @@ class StrawberrySQLAlchemyLoader:
             self._logger.warning(
                 "One of bind or async_bind_factory must be set for loader to function properly."
             )
-        if bind is not None:
-            # For anyone coming here because of this warning:
-            # Making blocking database calls from within an async function (the resolver) has
-            # catastrophic performance implications. Not only will all resolvers be effectively
-            # serialized, any other coroutines waiting on the event loop (e.g. concurrent requests
-            # in a web server), will be blocked as well, grinding your entire service to a halt.
-            self._logger.warning(
-                "`bind` parameter is deprecated due to performance issues. Use `async_bind_factory` instead."
-            )
 
     async def _scalars(self, *args, **kwargs):
         if self._async_bind_factory:
             async with self._async_bind_factory() as bind:
                 return await bind.scalars(*args, **kwargs)
         else:
-            # Deprecated, but supported for now.
             assert self._bind is not None
             return self._bind.scalars(*args, **kwargs)
 
