@@ -65,7 +65,7 @@ def engine_factory(request) -> Engine:
         url = (
             request.getfixturevalue("postgresql")
             .url()
-            .replace("postgresql://", "postgresql+psycopg2://")
+            .replace("postgresql://", "postgresql+psycopg://")
         )
     else:
         raise ValueError("Unsupported database: %s", request.param)
@@ -92,7 +92,7 @@ def async_engine_factory(request) -> Callable[[], AsyncEngine]:
         url = (
             request.getfixturevalue("postgresql")
             .url()
-            .replace("postgresql://", "postgresql+asyncpg://")
+            .replace("postgresql://", "postgresql+psycopg://")
         )
     else:
         raise ValueError("Unsupported database: %s", request.param)
