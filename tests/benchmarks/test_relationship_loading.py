@@ -104,7 +104,7 @@ def test_load_many_relationships(
     mocker.patch.object(orm.Session, "_execute_internal", autospec=True)
 
     def sleep_then_execute(self, *args, **kwargs):
-        time.sleep(0.01)
+        time.sleep(0.1)
         return old_execute_internal(self, *args, **kwargs)
 
     orm.Session._execute_internal.side_effect = sleep_then_execute
@@ -174,7 +174,7 @@ def test_load_many_relationships_async(
     mocker.patch.object(AsyncSession, "scalars", autospec=True)
 
     async def sleep_then_scalars(self, *args, **kwargs):
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.1)
         return await old_scalars(self, *args, **kwargs)
 
     mock = AsyncMock()
