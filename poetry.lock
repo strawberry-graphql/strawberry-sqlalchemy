@@ -1248,13 +1248,13 @@ sqlcipher = ["sqlcipher3-binary"]
 
 [[package]]
 name = "strawberry-graphql"
-version = "0.209.1"
+version = "0.209.2"
 description = "A library for creating GraphQL APIs"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "strawberry_graphql-0.209.1-py3-none-any.whl", hash = "sha256:c2ffa1c343c06e3b2b407b52e75bd5179704702dd5d2d1b0265cd46be440a703"},
-    {file = "strawberry_graphql-0.209.1.tar.gz", hash = "sha256:c9b6a541a0a1fef07cbf2242e439aaebeb5a20c426cf2b0ba6b605b00d86352f"},
+    {file = "strawberry_graphql-0.209.2-py3-none-any.whl", hash = "sha256:b4200a0b9081db71fe9fffc19075ff403d89815fa22c8b7e4647c7c6088afc9d"},
+    {file = "strawberry_graphql-0.209.2.tar.gz", hash = "sha256:f8aafcd7184aeff953dbd81e982e3d140434ae55962cc8d2d7cc0cb282878543"},
 ]
 
 [package.dependencies]
