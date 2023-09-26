@@ -45,13 +45,13 @@ class StrawberrySQLAlchemyLoader:
                 "One of bind or async_bind_factory must be set for loader to function properly."
             )
 
-    async def _scalars(self, *args, **kwargs):
+    async def _scalars_all(self, *args, **kwargs):
         if self._async_bind_factory:
             async with self._async_bind_factory() as bind:
-                return await bind.scalars(*args, **kwargs)
+                return (await bind.scalars(*args, **kwargs)).all()
         else:
             assert self._bind is not None
-            return self._bind.scalars(*args, **kwargs)
+            return self._bind.scalars(*args, **kwargs).all()
 
     def loader_for(self, relationship: RelationshipProperty) -> DataLoader:
         """
@@ -70,7 +70,7 @@ class StrawberrySQLAlchemyLoader:
                 )
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
-                rows = (await self._scalars(query)).all()
+                rows = await self._scalars_all(query)
 
                 def group_by_remote_key(row: Any) -> Tuple:
                     return tuple(
