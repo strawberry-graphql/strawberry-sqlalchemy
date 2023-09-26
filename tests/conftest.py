@@ -97,8 +97,11 @@ def async_engine(request) -> AsyncEngine:
 
 
 @pytest.fixture
-def async_sessionmaker(async_engine) -> asyncio.async_sessionmaker:
-    return asyncio.async_sessionmaker(async_engine)
+def async_sessionmaker(async_engine):
+    if SQLA2:
+        return asyncio.async_sessionmaker(async_engine)
+    else:
+        return lambda: asyncio.AsyncSession(async_engine)
 
 
 @pytest.fixture
