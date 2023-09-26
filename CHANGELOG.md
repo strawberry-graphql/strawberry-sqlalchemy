@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.3.1 - 2023-09-26
+------------------
+
+Make sure async session is still open when we call .all()
+
+Contributed by [mattalbr](https://github.com/mattalbr) via [PR #55](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/55/)
+
+
 0.3.0 - 2023-09-26
 ------------------
 
