@@ -40,12 +40,13 @@ version_scheme = "no-guess-dev"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-sqlalchemy = ">=1.4"
+sqlalchemy = {extras = ["asyncio"], version = ">=1.4"}
 strawberry-graphql = ">=0.95"
 sentinel = ">=0.3,<1.1"
 greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 
 [tool.poetry.group.dev.dependencies]
+asyncpg = "^0.28.0"
 black = ">=22,<24"
 importlib-metadata = ">=4.11.1,<7.0.0"
 mypy = "1.5.1"
@@ -106,6 +107,8 @@ ignore = [
     # we'd want to have consistent docstrings in future
     "D",
     "ANN001", # missing annotation for function argument self.
+    "ANN002", # missing annotation for *args.
+    "ANN003", # missing annotatino for **kwargs.
     "ANN101", # missing annotation for self?
     # definitely enable these, maybe not in tests
     "ANN102",

@@ -58,7 +58,7 @@ def secondary_tables(base):
 
 def test_loader_init():
     loader = StrawberrySQLAlchemyLoader(bind=None)
-    assert loader.bind is None
+    assert loader._bind is None
     assert loader._loaders == {}
 
 
@@ -99,14 +99,49 @@ async def test_loader_for(engine, base, sessionmaker, many_to_one_tables):
         assert department.name == "d2"
 
         loader = base_loader.loader_for(Department.employees.property)
-        key = tuple(
-            [
-                getattr(d2, local.key)
-                for local, _ in Department.employees.property.local_remote_pairs
-            ]
-        )
+
         employees = await loader.load((d2.id,))
         assert {e.name for e in employees} == {"e1"}
+
+
+@pytest.mark.asyncio
+async def test_loader_with_async_session(
+    async_engine, base, async_sessionmaker, many_to_one_tables
+):
+    Employee, Department = many_to_one_tables
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    async with async_sessionmaker() as session:
+        e1 = Employee(name="e1")
+        e2 = Employee(name="e2")
+        d1 = Department(name="d1")
+        d2 = Department(name="d2")
+        session.add(e1)
+        session.add(e2)
+        session.add(d1)
+        session.add(d2)
+        await session.flush()
+
+        e1.department = d2
+        e2.department = d1
+        await session.commit()
+        d2_id = await d2.awaitable_attrs.id
+        department_loader_key = tuple(
+            [
+                await getattr(e1.awaitable_attrs, local.key)
+                for local, _ in Employee.department.property.local_remote_pairs
+            ]
+        )
+    base_loader = StrawberrySQLAlchemyLoader(async_bind_factory=async_sessionmaker)
+    loader = base_loader.loader_for(Employee.department.property)
+
+    department = await loader.load(department_loader_key)
+    assert department.name == "d2"
+
+    loader = base_loader.loader_for(Department.employees.property)
+    employees = await loader.load((d2_id,))
+    assert {e.name for e in employees} == {"e1"}
 
 
 @pytest.mark.xfail
