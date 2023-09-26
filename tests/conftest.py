@@ -18,7 +18,7 @@ from packaging import version
 from sqlalchemy import orm
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext import asyncio
-from sqlalchemy.ext.asyncio import AsyncAttrs, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from testing.postgresql import Postgresql, PostgresqlFactory
 
@@ -101,12 +101,9 @@ def async_sessionmaker(async_engine):
     if SQLA2:
         return asyncio.async_sessionmaker(async_engine)
     else:
-        return lambda: asyncio.AsyncSession(async_engine)
+        return lambda **kwargs: asyncio.AsyncSession(async_engine, **kwargs)
 
 
 @pytest.fixture
 def base():
-    class Base(AsyncAttrs, orm.DeclarativeBase):
-        pass
-
-    return Base
+    return orm.declarative_base()

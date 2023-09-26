@@ -14,12 +14,14 @@ def many_to_one_tables(base):
         name = Column(String, nullable=False)
         department_id = Column(Integer, ForeignKey("department.id"))
         department = relationship("Department", back_populates="employees")
+        __mapper_args__ = {"eager_defaults": True}
 
     class Department(base):
         __tablename__ = "department"
         id = Column(Integer, autoincrement=True, primary_key=True)
         name = Column(String, nullable=False)
         employees = relationship("Employee", back_populates="department")
+        __mapper_args__ = {"eager_defaults": True}
 
     return Employee, Department
 
@@ -112,7 +114,7 @@ async def test_loader_with_async_session(
     async with async_engine.begin() as conn:
         await conn.run_sync(base.metadata.create_all)
 
-    async with async_sessionmaker() as session:
+    async with async_sessionmaker(expire_on_commit=False) as session:
         e1 = Employee(name="e1")
         e2 = Employee(name="e2")
         d1 = Department(name="d1")
@@ -126,10 +128,10 @@ async def test_loader_with_async_session(
         e1.department = d2
         e2.department = d1
         await session.commit()
-        d2_id = await d2.awaitable_attrs.id
+        d2_id = d2.id
         department_loader_key = tuple(
             [
-                await getattr(e1.awaitable_attrs, local.key)
+                getattr(e1, local.key)
                 for local, _ in Employee.department.property.local_remote_pairs
             ]
         )
