@@ -1,6 +1,25 @@
 CHANGELOG
 =========
 
+0.3.0 - 2023-09-26
+------------------
+
+Adds support for async sessions. To use:
+
+```python
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader
+
+url = "postgresql://..."
+engine = create_async_engine(url)
+sessionmaker = async_sessionmaker(engine)
+
+loader = StrawberrySQLAlchemyLoader(async_bind_factory=sessionmaker)
+```
+
+Contributed by [mattalbr](https://github.com/mattalbr) via [PR #53](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/53/)
+
+
 0.2.1 - 2023-09-21
 ------------------
 
