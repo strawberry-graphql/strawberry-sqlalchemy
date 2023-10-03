@@ -160,6 +160,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         extra_sqlalchemy_type_to_strawberry_type_map: Optional[
             Mapping[Type[TypeEngine], Type[Any]]
         ] = None,
+        edge_type: Optional[Type] = None,
+        connection_type: Optional[Type] = None,
     ) -> None:
         if model_to_type_name is None:
             model_to_type_name = self._default_model_to_type_name
@@ -180,6 +182,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         self.mapped_interfaces = {}
         self._related_type_models = set()
         self._related_interface_models = set()
+
+        self.edge_type = edge_type
+        self.connection_type = connection_type
 
     @staticmethod
     def _default_model_to_type_name(model: Type[BaseModelType]) -> str:
@@ -220,6 +225,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Get or create a corresponding Edge model for the given type
         (to support future pagination)
         """
+        if self.edge_type is not None:
+            return self.edge_type
         edge_name = f"{type_name}Edge"
         if edge_name not in self.edge_types:
             self.edge_types[edge_name] = edge_type = strawberry.type(
@@ -238,6 +245,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Get or create a corresponding Connection model for the given type
         (to support future pagination)
         """
+        if self.connection_type is not None:
+            return self.connection_type[ForwardRef(type_name)]
         connection_name = f"{type_name}Connection"
         if connection_name not in self.connection_types:
             self.connection_types[connection_name] = connection_type = strawberry.type(
@@ -269,6 +278,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         if isinstance(column.type, Enum):
             type_annotation = column.type.python_type
+            if not hasattr(column.type, "_enum_definition"):
+                type_annotation = strawberry.enum(type_annotation)
         elif isinstance(column.type, ARRAY):
             item_type = self._convert_column_to_strawberry_type(
                 Column(column.type.item_type, nullable=False)
