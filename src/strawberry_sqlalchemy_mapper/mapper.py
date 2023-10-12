@@ -1,4 +1,3 @@
-import ast
 import asyncio
 import collections.abc
 import dataclasses
@@ -638,7 +637,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 if key in mapper.columns or key in mapper.relationships:
                     continue
                 if key in model.__annotations__:
-                    annotation = ast.literal_eval(model.__annotations__[key])
+                    annotation = eval(model.__annotations__[key])
                     for (  # type: ignore[assignment]
                         sqlalchemy_type,
                         strawberry_type,
@@ -679,7 +678,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                             if "typing" in annotation:
                                 # Try to evaluate from existing typing imports
                                 annotation = annotation[7:]
-                            annotation = ast.literal_eval(annotation)
+                            annotation = eval(annotation)
                         except NameError:
                             raise UnsupportedDescriptorType(key)
                     self._add_annotation(
