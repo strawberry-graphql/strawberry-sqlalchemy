@@ -643,7 +643,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         sqlalchemy_type,
                         strawberry_type,
                     ) in self.sqlalchemy_type_to_strawberry_type_map.items():
-                        if isinstance(annotation, sqlalchemy_type):
+                        if annotation == sqlalchemy_type:
                             self._add_annotation(
                                 type_, key, strawberry_type, generated_field_keys
                             )
