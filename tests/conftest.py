@@ -26,6 +26,10 @@ SQLA_VERSION = version.parse(sqlalchemy.__version__)
 SQLA2 = SQLA_VERSION >= version.parse("2.0")
 
 
+logging.basicConfig()
+logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+
+
 def _pick_unused_port():
     with contextlib.closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
         s.bind(("", 0))
