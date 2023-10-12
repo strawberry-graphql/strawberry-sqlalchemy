@@ -555,6 +555,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         model: Type[BaseModelType],
         make_interface=False,
         use_federation=False,
+        **kwargs,
     ) -> Callable[[Type[object]], Any]:
         """
         Decorate a type with this to register it as a strawberry type
@@ -703,15 +704,19 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             # (because they may not have default values)
             type_.__annotations__.update(old_annotations)
 
+            type_name = type_.__name__
+            if "name" in kwargs:
+                type_name = kwargs["name"]
+
             if make_interface:
-                mapped_type = strawberry.interface(type_)
-                self.mapped_interfaces[type_.__name__] = mapped_type
+                mapped_type = strawberry.interface(type_, **kwargs)
+                self.mapped_interfaces[type_name] = mapped_type
             elif use_federation:
-                mapped_type = strawberry.federation.type(type_)
-                self.mapped_types[type_.__name__] = mapped_type
+                mapped_type = strawberry.federation.type(type_, **kwargs)
+                self.mapped_types[type_name] = mapped_type
             else:
-                mapped_type = strawberry.type(type_)
-                self.mapped_types[type_.__name__] = mapped_type
+                mapped_type = strawberry.type(type_, **kwargs)
+                self.mapped_types[type_name] = mapped_type
             setattr(mapped_type, _GENERATED_FIELD_KEYS_KEY, generated_field_keys)
             setattr(mapped_type, _ORIGINAL_TYPE_KEY, type_)
             return mapped_type
