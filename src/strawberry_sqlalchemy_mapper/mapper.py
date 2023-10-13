@@ -3,6 +3,7 @@ import asyncio
 import collections.abc
 import dataclasses
 import sys
+import types
 import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -23,6 +24,7 @@ from typing import (
     MutableMapping,
     NewType,
     Optional,
+    Protocol,
     Set,
     Type,
     TypeVar,
@@ -68,11 +70,12 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.sql.type_api import TypeEngine
+from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
 from strawberry.field import StrawberryField
 from strawberry.private import is_private
 from strawberry.scalars import JSON as StrawberryJSON
-from strawberry.type import get_object_definition
+from strawberry.type import WithStrawberryObjectDefinition, get_object_definition
 from strawberry.types import Info
 
 from strawberry_sqlalchemy_mapper.exc import (
@@ -83,6 +86,12 @@ from strawberry_sqlalchemy_mapper.exc import (
     UnsupportedDescriptorType,
 )
 from strawberry_sqlalchemy_mapper.field import field
+from strawberry_sqlalchemy_mapper.relay import (
+    resolve_model_id,
+    resolve_model_id_attr,
+    resolve_model_node,
+    resolve_model_nodes,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.expression import ColumnElement
@@ -103,13 +112,20 @@ _IS_GENERATED_CONNECTION_TYPE_KEY = "_is_generated_connection_type"
 _IS_GENERATED_RESOLVER_KEY = "_is_generated_resolver"
 
 
+class WithStrawberrySQLAlchemyObjectDefinition(
+    WithStrawberryObjectDefinition,
+    Protocol,
+):
+    __strawberry_sqlalchemy_definition__: ClassVar["StrawberrySQLAlchemyType"]
+
+
 @dataclasses.dataclass
 class StrawberrySQLAlchemyType(Generic[BaseModelType]):
     """
     Stores metadata information for a SQLAlchemy model type.
     """
 
-    TYPE_KEY_NAME: ClassVar[str] = "__strawberry_sqlalchemy__"
+    TYPE_KEY_NAME: ClassVar[str] = "__strawberry_sqlalchemy_definition__"
 
     #: In which mapper the type was defined
     mapper: "StrawberrySQLAlchemyMapper[BaseModelType]"
@@ -128,7 +144,12 @@ class StrawberrySQLAlchemyType(Generic[BaseModelType]):
         ...
 
     @classmethod
-    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]:
+    def from_type(
+        cls,
+        type_: Union[type, WithStrawberrySQLAlchemyObjectDefinition],
+        *,
+        strict: bool = False,
+    ) -> Optional[Self]:
         definition = getattr(type_, cls.TYPE_KEY_NAME, None)
         if strict and definition is None:
             raise TypeError(f"{type_!r} does not have a StrawberrySQLAlchemyType in it")
@@ -726,6 +747,35 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 type_.is_type_of = (
                     lambda obj, info: type(obj) == model or type(obj) == type_
                 )
+
+            # Default querying methods for relay
+            if issubclass(type_, relay.Node):
+                for attr, func in [
+                    ("resolve_id", resolve_model_id),
+                    ("resolve_id_attr", resolve_model_id_attr),
+                    ("resolve_node", resolve_model_node),
+                    ("resolve_nodes", resolve_model_nodes),
+                ]:
+                    existing_resolver = getattr(type_, attr, None)
+                    if (
+                        existing_resolver is None
+                        or existing_resolver.__func__
+                        is getattr(relay.Node, attr).__func__
+                    ):
+                        setattr(type_, attr, types.MethodType(func, type_))
+
+                    # Adjust types that inherit from other types/interfaces that implement Node
+                    # to make sure they pass themselves as the node type
+                    meth = getattr(type_, attr)
+                    if (
+                        isinstance(meth, types.MethodType)
+                        and meth.__self__ is not type_
+                    ):
+                        setattr(
+                            type_,
+                            attr,
+                            types.MethodType(cast(classmethod, meth).__func__, type_),
+                        )
 
             # need to make fields that are already in the type
             # (prior to mapping) appear *after* the mapped fields

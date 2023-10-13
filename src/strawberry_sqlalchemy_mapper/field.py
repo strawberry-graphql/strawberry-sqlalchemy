@@ -1,50 +1,57 @@
 from __future__ import annotations
 
+import asyncio
 import dataclasses
+import inspect
+from collections import defaultdict
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
+    DefaultDict,
+    Dict,
     Iterable,
     Iterator,
     List,
     Literal,
     Mapping,
     Sequence,
+    Tuple,
+    Type,
     TypeVar,
+    Union,
     cast,
     overload,
 )
+from typing_extensions import Annotated, TypeAlias
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Query, Session
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
+from strawberry.arguments import StrawberryArgument, argument
 from strawberry.extensions.field_extension import (
     FieldExtension,
 )
 from strawberry.field import (
+    _RESOLVER_TYPE,
     StrawberryField,
-    Union,
 )
+from strawberry.permission import BasePermission
 from strawberry.relay.exceptions import RelayWrongAnnotationError
+from strawberry.relay.types import NodeIterableType
 from strawberry.type import (
+    StrawberryList,
+    StrawberryOptional,
     get_object_definition,
 )
+from strawberry.types import Info
 from strawberry.types.fields.resolver import StrawberryResolver
-
-if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
-
-    from strawberry.arguments import StrawberryArgument
-    from strawberry.field import _RESOLVER_TYPE
-    from strawberry.permission import BasePermission
-    from strawberry.relay.types import NodeIterableType
-    from strawberry.types import Info
-
+from strawberry.utils.aio import asyncgen_to_list
 
 _T = TypeVar("_T")
 _SessionMaker: TypeAlias = Callable[[], Union[Session, AsyncSession]]
+
+assert argument  # ruff
 
 
 class StrawberrySQLAlchemyField(StrawberryField):
@@ -102,6 +109,145 @@ class StrawberrySQLAlchemyAsyncQuery:
             return next(self.iterator)
         except StopIteration as e:
             raise StopAsyncIteration from e
+
+
+class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
+    def get_node_resolver(self, field: StrawberrySQLAlchemyField):  # noqa: ANN201
+        # NOTE: This is a copy of relay.NodeExtension to allow us to pass
+        # the session to resolve_node below
+        type_ = field.type
+        is_optional = isinstance(type_, StrawberryOptional)
+
+        if (field_sessionmaker := field.sessionmaker) is None:
+            raise TypeError(f"Missing `sessionmaker` argument for field {field.name}")
+
+        def resolver(
+            info: Info,
+            id: Annotated[
+                relay.GlobalID, argument(description="The ID of the object.")
+            ],
+        ):
+            session = field_sessionmaker()
+
+            if isinstance(session, AsyncSession):
+                return session.run_sync(
+                    lambda s: id.resolve_type(info).resolve_node(
+                        id.node_id,
+                        info=info,
+                        required=not is_optional,
+                        session=s,  # type: ignore
+                    )
+                )
+
+            return id.resolve_type(info).resolve_node(
+                id.node_id,
+                info=info,
+                required=not is_optional,
+                session=session,  # type: ignore
+            )
+
+        return resolver
+
+    def get_node_list_resolver(self, field: StrawberrySQLAlchemyField):  # noqa: ANN201
+        # NOTE: This is a copy of relay.NodeExtension to allow us to pass
+        # the session to resolve_nodes below
+        type_ = field.type
+        assert isinstance(type_, StrawberryList)
+        is_optional = isinstance(type_.of_type, StrawberryOptional)
+
+        if (field_sessionmaker := field.sessionmaker) is None:
+            raise TypeError(f"Missing `sessionmaker` argument for field {field.name}")
+
+        def resolver(
+            info: Info,
+            ids: Annotated[
+                List[relay.GlobalID], argument(description="The IDs of the objects.")
+            ],
+        ):
+            session = field_sessionmaker()
+
+            nodes_map: DefaultDict[Type[relay.Node], List[str]] = defaultdict(list)
+            # Store the index of the node in the list of nodes of the same type
+            # so that we can return them in the same order while also supporting
+            # different types
+            index_map: Dict[relay.GlobalID, Tuple[Type[relay.Node], int]] = {}
+            for gid in ids:
+                node_t = gid.resolve_type(info)
+                nodes_map[node_t].append(gid.node_id)
+                index_map[gid] = (node_t, len(nodes_map[node_t]) - 1)
+
+            resolved_nodes = {
+                node_t: (
+                    session.run_sync(
+                        lambda s, node_t=node_t, node_ids=node_ids: list(
+                            node_t.resolve_nodes(
+                                info=info,
+                                node_ids=node_ids,
+                                required=not is_optional,
+                                session=s,  # type: ignore
+                            )
+                        )
+                    )
+                    if isinstance(session, AsyncSession)
+                    else node_t.resolve_nodes(
+                        info=info,
+                        node_ids=node_ids,
+                        required=not is_optional,
+                        session=session,  # type: ignore
+                    )
+                )
+                for node_t, node_ids in nodes_map.items()
+            }
+            awaitable_nodes = {
+                node_t: nodes
+                for node_t, nodes in resolved_nodes.items()
+                if inspect.isawaitable(nodes)
+            }
+            # Async generators are not awaitable, so we need to handle them separately
+            asyncgen_nodes = {
+                node_t: nodes
+                for node_t, nodes in resolved_nodes.items()
+                if inspect.isasyncgen(nodes)
+            }
+
+            if awaitable_nodes or asyncgen_nodes:
+
+                async def resolve(resolved=resolved_nodes):
+                    resolved.update(
+                        zip(
+                            [
+                                *awaitable_nodes.keys(),
+                                *asyncgen_nodes.keys(),
+                            ],
+                            # Resolve all awaitable nodes concurrently
+                            await asyncio.gather(
+                                *awaitable_nodes.values(),
+                                *(
+                                    asyncgen_to_list(nodes)
+                                    for nodes in asyncgen_nodes.values()
+                                ),
+                            ),
+                        )
+                    )
+
+                    # Resolve any generator to lists
+                    resolved = {
+                        node_t: list(nodes) for node_t, nodes in resolved.items()
+                    }
+                    return [
+                        resolved[index_map[gid][0]][index_map[gid][1]] for gid in ids
+                    ]
+
+                return resolve()
+
+            # Resolve any generator to lists
+            resolved = {
+                node_t: list(cast(Iterator[relay.Node], nodes))
+                for node_t, nodes in resolved_nodes.items()
+            }
+            return [resolved[index_map[gid][0]][index_map[gid][1]] for gid in ids]
+
+        return resolver
 
 
 class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
@@ -328,7 +474,7 @@ def node(
         ```
 
     """
-    extensions = [*extensions, relay.NodeExtension()]
+    extensions = [*extensions, StrawberrySQLAlchemyNodeExtension()]
     return StrawberrySQLAlchemyField(
         python_name=None,
         graphql_name=name,
