@@ -4,7 +4,6 @@ import pytest
 import strawberry
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.engine import Engine
-from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.orm import sessionmaker
 from strawberry import relay
@@ -122,7 +121,7 @@ def test_query(
 async def test_query_async(
     base: Any,
     async_engine: AsyncEngine,
-    async_sessionmaker: async_sessionmaker,
+    async_sessionmaker,
     fruit_table,
 ):
     async with async_engine.begin() as conn:
@@ -185,7 +184,7 @@ async def test_query_async(
 async def test_query_async_with_first(
     base: Any,
     async_engine: AsyncEngine,
-    async_sessionmaker: async_sessionmaker,
+    async_sessionmaker,
     fruit_table,
 ):
     async with async_engine.begin() as conn:

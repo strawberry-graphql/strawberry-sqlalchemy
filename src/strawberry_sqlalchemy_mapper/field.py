@@ -52,7 +52,7 @@ from strawberry.utils.aio import asyncgen_to_list
 _T = TypeVar("_T")
 _SessionMaker: TypeAlias = Callable[[], Union[Session, AsyncSession]]
 
-assert argument  # ruff
+assert argument  # type: ignore[truthy-function]
 
 
 class StrawberrySQLAlchemyField(StrawberryField):
@@ -113,7 +113,9 @@ class StrawberrySQLAlchemyAsyncQuery:
 
 
 class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
-    def get_node_resolver(self, field: StrawberrySQLAlchemyField):  # noqa: ANN201
+    def get_node_resolver(  # type: ignore[override]  # noqa: ANN201
+        self, field: StrawberrySQLAlchemyField
+    ):
         # NOTE: This is a copy of relay.NodeExtension to allow us to pass
         # the session to resolve_node below
         type_ = field.type
@@ -149,7 +151,10 @@ class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
 
         return resolver
 
-    def get_node_list_resolver(self, field: StrawberrySQLAlchemyField):  # noqa: ANN201
+    def get_node_list_resolver(  # type: ignore[override]  # noqa: ANN201
+        self,
+        field: StrawberrySQLAlchemyField,
+    ):
         # NOTE: This is a copy of relay.NodeExtension to allow us to pass
         # the session to resolve_nodes below
         type_ = field.type
@@ -185,7 +190,7 @@ class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
                                 info=info,
                                 node_ids=node_ids,
                                 required=not is_optional,
-                                session=s,  # type: ignore
+                                session=s,
                             )
                         )
                     )
@@ -252,7 +257,7 @@ class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
 
 
 class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
-    def apply(self, field: StrawberrySQLAlchemyField) -> None:
+    def apply(self, field: StrawberrySQLAlchemyField) -> None:  # type: ignore[override]
         from strawberry_sqlalchemy_mapper.mapper import StrawberrySQLAlchemyType
 
         strawberry_definition = get_object_definition(field.type, strict=True)
@@ -269,7 +274,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
             raise RelayWrongAnnotationError(field.name, cast(type, field.origin))
 
         assert isinstance(node_type, type)
-        sqlalchemy_definition = StrawberrySQLAlchemyType.from_type(
+        sqlalchemy_definition = StrawberrySQLAlchemyType[Any].from_type(
             node_type,
             strict=True,
         )

@@ -1,10 +1,9 @@
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 import pytest
 import strawberry
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.engine import Engine
-from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.orm import sessionmaker
 from strawberry import relay
@@ -75,7 +74,7 @@ def test_node(
 async def test_node_async(
     base: Any,
     async_engine: AsyncEngine,
-    async_sessionmaker: async_sessionmaker,
+    async_sessionmaker,
     fruit_table,
 ):
     async with async_engine.begin() as conn:
@@ -183,7 +182,7 @@ def test_nodes(
 
     @strawberry.type
     class Query:
-        fruits: list[Fruit] = node(sessionmaker=sessionmaker)
+        fruits: List[Fruit] = node(sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -232,7 +231,7 @@ def test_nodes(
 async def test_nodes_async(
     base: Any,
     async_engine: AsyncEngine,
-    async_sessionmaker: async_sessionmaker,
+    async_sessionmaker,
     fruit_table,
 ):
     async with async_engine.begin() as conn:
@@ -245,7 +244,7 @@ async def test_nodes_async(
 
     @strawberry.type
     class Query:
-        fruits: list[Fruit] = node(sessionmaker=async_sessionmaker)
+        fruits: List[Fruit] = node(sessionmaker=async_sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 

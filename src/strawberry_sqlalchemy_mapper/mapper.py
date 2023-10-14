@@ -286,7 +286,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 dataclasses.make_dataclass(
                     edge_name,
                     [],
-                    bases=(relay.Edge[type_name],),  # type: ignore
+                    bases=(relay.Edge[type_name],),  # type: ignore[valid-type]
                 )
             )
             setattr(edge_type, _GENERATED_FIELD_KEYS_KEY, ["node"])
@@ -304,9 +304,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 dataclasses.make_dataclass(
                     connection_name,
                     [
-                        ("edges", List[edge_type]),
+                        ("edges", List[edge_type]),  # type: ignore[valid-type]
                     ],
-                    bases=(relay.ListConnection[type_name],),  # type: ignore
+                    bases=(relay.ListConnection[type_name],),  # type: ignore[valid-type]
                 )
             )
             setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
@@ -350,7 +350,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if type_annotation is SkipTypeSentinel:
             return type_annotation
         if column.nullable:
-            type_annotation = Optional[type_annotation]  # type: ignore
+            type_annotation = Optional[type_annotation]
         assert type_annotation is not None
         return type_annotation
 
@@ -763,7 +763,11 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         or existing_resolver.__func__
                         is getattr(relay.Node, attr).__func__
                     ):
-                        setattr(type_, attr, types.MethodType(func, type_))
+                        setattr(
+                            type_,
+                            attr,
+                            types.MethodType(func, type_),  # type: ignore[arg-type]
+                        )
 
                     # Adjust types that inherit from other types/interfaces that implement Node
                     # to make sure they pass themselves as the node type

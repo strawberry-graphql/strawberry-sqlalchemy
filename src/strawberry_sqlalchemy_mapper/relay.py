@@ -171,7 +171,7 @@ def resolve_model_nodes(
     """
     from strawberry_sqlalchemy_mapper.mapper import StrawberrySQLAlchemyType
 
-    definition = StrawberrySQLAlchemyType.from_type(source, strict=True)
+    definition = StrawberrySQLAlchemyType[Any].from_type(source, strict=True)
     model = definition.model
 
     query = session.query(model)
@@ -263,7 +263,7 @@ def resolve_model_node(
     """
     from strawberry_sqlalchemy_mapper.mapper import StrawberrySQLAlchemyType
 
-    definition = StrawberrySQLAlchemyType.from_type(source, strict=True)
+    definition = StrawberrySQLAlchemyType[Any].from_type(source, strict=True)
     model = definition.model
 
     if isinstance(node_id, relay.GlobalID):
@@ -299,7 +299,7 @@ def resolve_model_id_attr(source: Type) -> str:
     except NodeIDAnnotationError:
         from strawberry_sqlalchemy_mapper.mapper import StrawberrySQLAlchemyType
 
-        definition = StrawberrySQLAlchemyType.from_type(source, strict=True)
+        definition = StrawberrySQLAlchemyType[Any].from_type(source, strict=True)
         id_attr = "|".join(
             key.name for key in sqlalchemy_inspect(definition.model).primary_key
         )

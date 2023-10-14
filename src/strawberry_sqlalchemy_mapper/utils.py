@@ -10,7 +10,7 @@ from strawberry.type import (
     StrawberryType,
 )
 
-_Type = TypeVar("_Type", bound="StrawberryType | type")
+_T = TypeVar("_T", bound=type)
 
 
 @overload
@@ -19,7 +19,7 @@ def unwrap_type(type_: StrawberryContainer) -> StrawberryType | type:
 
 
 @overload
-def unwrap_type(type_: _Type) -> _Type:
+def unwrap_type(type_: _T) -> _T:
     ...
 
 
