@@ -14,6 +14,7 @@ from typing import (
     List,
     Literal,
     Mapping,
+    Optional,
     Sequence,
     Tuple,
     Type,
@@ -285,12 +286,22 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
                 )
 
             def default_resolver(
-                root: None,
+                root: Optional[Any],
                 info: Info,
                 **kwargs: Any,
             ) -> Iterable[Any]:
                 session = field_sessionmaker()
+
                 if isinstance(session, AsyncSession):
+                    if root is not None:
+                        return cast(
+                            Iterable[Any],
+                            StrawberrySQLAlchemyAsyncQuery(
+                                session=session,
+                                query=getattr(root, field.python_name),
+                            ),
+                        )
+
                     return cast(
                         Iterable[Any],
                         StrawberrySQLAlchemyAsyncQuery(
@@ -298,6 +309,9 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
                             query=lambda s: s.query(model),
                         ),
                     )
+
+                if root is not None:
+                    return getattr(root, field.python_name)
 
                 return session.query(model)
 

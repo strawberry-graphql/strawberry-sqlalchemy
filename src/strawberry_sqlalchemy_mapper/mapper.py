@@ -285,9 +285,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             self.edge_types[edge_name] = edge_type = strawberry.type(
                 dataclasses.make_dataclass(
                     edge_name,
-                    [
-                        ("node", cast(type, ForwardRef(type_name))),
-                    ],
+                    [],
+                    bases=(relay.Edge[type_name],),  # type: ignore
                 )
             )
             setattr(edge_type, _GENERATED_FIELD_KEYS_KEY, ["node"])
@@ -300,12 +299,14 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         connection_name = f"{type_name}Connection"
         if connection_name not in self.connection_types:
+            edge_type = self._edge_type_for(type_name)
             self.connection_types[connection_name] = connection_type = strawberry.type(
                 dataclasses.make_dataclass(
                     connection_name,
                     [
-                        ("edges", List[self._edge_type_for(type_name)]),  # type: ignore
+                        ("edges", List[edge_type]),
                     ],
+                    bases=(relay.ListConnection[type_name],),  # type: ignore
                 )
             )
             setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
