@@ -5,6 +5,14 @@ updates:
   schedule:
     interval: daily
   open-pull-requests-limit: 10
+  groups:
+    all-dependencies:
+      patterns:
+        - "*"
+      # Strawberry is an internal dependency, 
+      # let's keep an additional eye on this
+      exclude-patterns:
+        - "strawberry-graphql"
   allow:
   - dependency-type: direct
   ignore:
