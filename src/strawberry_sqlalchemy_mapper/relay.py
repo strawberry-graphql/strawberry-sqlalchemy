@@ -4,6 +4,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Iterable,
+    List,
     Optional,
     Type,
     TypeVar,
@@ -12,19 +13,25 @@ from typing import (
     overload,
 )
 
+import sqlakeyset
+import strawberry
 from sqlalchemy import and_, or_
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from strawberry import relay
 from strawberry.relay.exceptions import NodeIDAnnotationError
+from strawberry.relay.types import NodeType
+from strawberry.type import StrawberryContainer, get_object_definition
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, Self
 
     from sqlalchemy.orm import Query, Session
     from strawberry.types.info import Info
     from strawberry.utils.await_maybe import AwaitableOrValue
 
+    from strawberry_sqlalchemy_mapper.field import StrawberrySQLAlchemyAsyncQuery
     from strawberry_sqlalchemy_mapper.mapper import (
         WithStrawberrySQLAlchemyObjectDefinition,
     )
@@ -39,6 +46,102 @@ __all__ = [
     "resolve_model_node",
     "resolve_model_nodes",
 ]
+
+
+@strawberry.type(description="An edge in a connection.")
+class Edge(relay.Edge[NodeType]):
+    @classmethod
+    def resolve_edge(cls, node: NodeType, *, cursor: Any = None) -> Self:
+        return cls(cursor=cursor, node=node)
+
+
+@strawberry.type(name="Connection", description="A connection to a list of items.")
+class KeysetConnection(relay.Connection[NodeType]):
+    edges: List[Edge[NodeType]] = strawberry.field(  # type: ignore[assignment]
+        description="Contains the nodes in this connection",
+    )
+
+    @classmethod
+    def resolve_connection(
+        cls,
+        nodes: Union[Query, StrawberrySQLAlchemyAsyncQuery],  # type: ignore[override]
+        *,
+        info: Info,
+        before: Optional[str] = None,
+        after: Optional[str] = None,
+        first: Optional[int] = None,
+        last: Optional[int] = None,
+        **kwargs: Any,
+    ) -> AwaitableOrValue[Self]:
+        from .field import StrawberrySQLAlchemyAsyncQuery, connection_session
+
+        if first and last:
+            raise ValueError("Cannot provide both `first` and `last`")
+        elif first and before:
+            raise ValueError("`first` cannot be provided with `before`")
+        elif last and after:
+            raise ValueError("`last` cannot be provided with `after`")
+
+        max_results = info.schema.config.relay_max_results
+        per_page = first or last or max_results
+        if per_page > max_results:
+            raise ValueError(f"Argument 'last' cannot be higher than {max_results}.")
+
+        session = connection_session.get()
+        assert session is not None
+
+        def resolve_connection(page: sqlakeyset.Page):
+            type_def = get_object_definition(cls)
+            assert type_def
+            field_def = type_def.get_field("edges")
+            assert field_def
+
+            field = field_def.resolve_type(type_definition=type_def)
+            while isinstance(field, StrawberryContainer):
+                field = field.of_type
+
+            edge_class = cast(Edge[NodeType], field)
+
+            return cls(
+                page_info=relay.PageInfo(
+                    has_next_page=page.paging.has_next,
+                    has_previous_page=page.paging.has_previous,
+                    start_cursor=page.paging.get_bookmark_at(0) if page else None,
+                    end_cursor=page.paging.get_bookmark_at(-1) if page else None,
+                ),
+                edges=[
+                    edge_class.resolve_edge(n, cursor=page.paging.get_bookmark_at(i))
+                    for i, n in enumerate(page)
+                ],
+            )
+
+        def resolve_nodes(s: Session, nodes=nodes):
+            if isinstance(nodes, StrawberrySQLAlchemyAsyncQuery):
+                nodes = nodes.query(s)
+
+            return resolve_connection(
+                sqlakeyset.get_page(
+                    nodes,
+                    before=(
+                        sqlakeyset.unserialize_bookmark(before).place
+                        if before
+                        else None
+                    ),
+                    after=(
+                        sqlakeyset.unserialize_bookmark(after).place if after else None
+                    ),
+                    per_page=per_page,
+                )
+            )
+
+        if isinstance(session, AsyncSession):
+
+            async def resolve_async(nodes=nodes):
+                return await session.run_sync(lambda s: resolve_nodes(s))
+
+            return resolve_async()
+
+        return resolve_nodes(session)
 
 
 @overload

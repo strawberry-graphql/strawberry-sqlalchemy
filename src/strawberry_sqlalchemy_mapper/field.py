@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import contextvars
 import dataclasses
 import inspect
 from collections import defaultdict
@@ -9,6 +11,7 @@ from typing import (
     Callable,
     DefaultDict,
     Dict,
+    Generator,
     Iterable,
     Iterator,
     List,
@@ -25,6 +28,7 @@ from typing import (
 )
 from typing_extensions import Annotated, TypeAlias
 
+from sqlakeyset.types import Keyset
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Query, Session
 from strawberry import relay
@@ -55,6 +59,25 @@ _SessionMaker: TypeAlias = Callable[[], Union[Session, AsyncSession]]
 assert argument  # type: ignore[truthy-function]
 
 
+connection_session: contextvars.ContextVar[
+    Union[Session, AsyncSession, None]
+] = contextvars.ContextVar(
+    "connection-session",
+    default=None,
+)
+
+
+@contextlib.contextmanager
+def set_connection_session(
+    s: Union[Session, AsyncSession, None]
+) -> Generator[None, None, None]:
+    token = connection_session.set(s)
+    try:
+        yield
+    finally:
+        connection_session.reset(token)
+
+
 class StrawberrySQLAlchemyField(StrawberryField):
     """
     Base field for SQLAlchemy types.
@@ -63,9 +86,11 @@ class StrawberrySQLAlchemyField(StrawberryField):
     def __init__(
         self,
         sessionmaker: _SessionMaker | None = None,
+        keyset: Keyset | None = None,
         **kwargs,
     ):
         self.sessionmaker = sessionmaker
+        self.keyset = keyset
         super().__init__(**kwargs)
 
 
@@ -260,6 +285,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
     def apply(self, field: StrawberrySQLAlchemyField) -> None:  # type: ignore[override]
         from strawberry_sqlalchemy_mapper.mapper import StrawberrySQLAlchemyType
 
+        self.field = field
         strawberry_definition = get_object_definition(field.type, strict=True)
         node_type = strawberry_definition.type_var_map.get("NodeType")
         if node_type is None:
@@ -295,34 +321,79 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
                 info: Info,
                 **kwargs: Any,
             ) -> Iterable[Any]:
-                session = field_sessionmaker()
+                session = connection_session.get()
+                if session is None:
+                    session = field_sessionmaker()
+
+                def _get_query(s: Session):
+                    if root is not None:
+                        # root won't be None when resolving nested connections.
+                        # TODO: Maybe we want to send this to a dataloader?
+                        query = getattr(root, field.python_name)
+                    else:
+                        query = s.query(model)
+
+                    if field.keyset is not None:
+                        query = query.order_by(*field.keyset)
+
+                    return query
 
                 if isinstance(session, AsyncSession):
-                    if root is not None:
-                        return cast(
-                            Iterable[Any],
-                            StrawberrySQLAlchemyAsyncQuery(
-                                session=session,
-                                query=getattr(root, field.python_name),
-                            ),
-                        )
-
                     return cast(
                         Iterable[Any],
                         StrawberrySQLAlchemyAsyncQuery(
                             session=session,
-                            query=lambda s: s.query(model),
+                            query=lambda s: _get_query(s),
                         ),
                     )
 
-                if root is not None:
-                    return getattr(root, field.python_name)
-
-                return session.query(model)
+                return _get_query(session)
 
             field.base_resolver = StrawberryResolver(default_resolver)
 
         return super().apply(field)
+
+    def resolve(self, *args, **kwargs) -> Any:
+        if (field_sessionmaker := self.field.sessionmaker) is None:
+            raise TypeError(
+                f"Missing `sessionmaker` argument for field {self.field.name}"
+            )
+
+        session = field_sessionmaker()
+
+        if isinstance(session, AsyncSession):
+            super_meth = super().resolve
+
+            async def inner_resolve_async():
+                async with session as s:
+                    with set_connection_session(s):
+                        retval = super_meth(*args, **kwargs)
+                        if inspect.isawaitable(retval):
+                            retval = await retval
+                        return retval
+
+            return inner_resolve_async()
+
+        with session as s:
+            with set_connection_session(s):
+                return super().resolve(*args, **kwargs)
+
+    async def resolve_async(self, *args, **kwargs) -> Any:
+        if (field_sessionmaker := self.field.sessionmaker) is None:
+            raise TypeError(
+                f"Missing `sessionmaker` argument for field {self.field.name}"
+            )
+
+        session = field_sessionmaker()
+
+        if isinstance(session, AsyncSession):
+            async with session as s:
+                with set_connection_session(s):
+                    return await super().resolve_async(*args, **kwargs)
+
+        with session as s:
+            with set_connection_session(s):
+                return await super().resolve_async(*args, **kwargs)
 
 
 @overload
@@ -527,6 +598,7 @@ def connection(
     directives: Sequence[object] | None = (),
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
+    keyset: Keyset | None = None,
 ) -> Any:
     ...
 
@@ -549,6 +621,7 @@ def connection(
     directives: Sequence[object] | None = (),
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
+    keyset: Keyset | None = None,
 ) -> Any:
     ...
 
@@ -569,6 +642,7 @@ def connection(
     directives: Sequence[object] | None = (),
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
+    keyset: Keyset | None = None,
     # This init parameter is used by pyright to determine whether this field
     # is added in the constructor or not. It is not used to change
     # any behavior at the moment.
@@ -648,6 +722,7 @@ def connection(
         directives=directives or (),
         extensions=extensions,
         sessionmaker=sessionmaker,
+        keyset=keyset,
     )
 
     if resolver:
