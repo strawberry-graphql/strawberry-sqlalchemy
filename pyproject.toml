@@ -46,7 +46,7 @@ sentinel = ">=0.3,<1.1"
 greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 
 [tool.poetry.group.dev.dependencies]
-asyncpg = "^0.28.0"
+asyncpg = ">=0.28,<0.30"
 black = ">=22,<24"
 importlib-metadata = ">=4.11.1,<7.0.0"
 mypy = "1.5.1"
