@@ -1248,13 +1248,13 @@ sqlcipher = ["sqlcipher3-binary"]
 
 [[package]]
 name = "strawberry-graphql"
-version = "0.209.1"
+version = "0.213.0"
 description = "A library for creating GraphQL APIs"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "strawberry_graphql-0.209.1-py3-none-any.whl", hash = "sha256:c2ffa1c343c06e3b2b407b52e75bd5179704702dd5d2d1b0265cd46be440a703"},
-    {file = "strawberry_graphql-0.209.1.tar.gz", hash = "sha256:c9b6a541a0a1fef07cbf2242e439aaebeb5a20c426cf2b0ba6b605b00d86352f"},
+    {file = "strawberry_graphql-0.213.0-py3-none-any.whl", hash = "sha256:f053b82c93d48add30a7d8ad150f4a51cb539a6e08f9f0f0381f62e9937a19f5"},
+    {file = "strawberry_graphql-0.213.0.tar.gz", hash = "sha256:18db687a89f803fb0e83f57ac9800f395137f96df3e67c18ce5d669d3327bb42"},
 ]
 
 [package.dependencies]
@@ -1277,6 +1277,7 @@ flask = ["flask (>=1.1)"]
 opentelemetry = ["opentelemetry-api (<2)", "opentelemetry-sdk (<2)"]
 pydantic = ["pydantic (>1.6.1)"]
 pyinstrument = ["pyinstrument (>=4.0.0)"]
+quart = ["quart (>=0.19.3)"]
 sanic = ["sanic (>=20.12.2)"]
 starlite = ["starlite (>=1.48.0)"]
 
