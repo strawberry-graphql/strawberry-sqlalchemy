@@ -62,6 +62,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.sql.type_api import TypeEngine
 from strawberry.annotation import StrawberryAnnotation
+from strawberry.type import get_object_definition
 from strawberry.types import Info
 
 from strawberry_sqlalchemy_mapper.exc import (
@@ -730,7 +731,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             self.edge_types.values(),
             self.connection_types.values(),
         ):
-            for field in mapped_type.__strawberry_definition__.fields:
+            for field in get_object_definition(mapped_type).fields:
                 if field.name in getattr(mapped_type, _GENERATED_FIELD_KEYS_KEY):
                     namespace = {}
                     if hasattr(mapped_type, _ORIGINAL_TYPE_KEY):

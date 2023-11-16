@@ -6,7 +6,7 @@ from sqlalchemy import Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from strawberry.type import StrawberryOptional
+from strawberry.type import StrawberryOptional, get_object_definition
 
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
@@ -262,8 +262,8 @@ def test_type_simple():
     assert len(additional_types) == 1
     mapped_employee_type = additional_types[0]
     assert mapped_employee_type.__name__ == "Employee"
-    assert len(mapped_employee_type.__strawberry_definition__._fields) == 2
-    employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
+    assert len(get_object_definition(mapped_employee_type)._fields) == 2
+    employee_type_fields = get_object_definition(mapped_employee_type)._fields
     name = list(filter(lambda f: f.name == "name", employee_type_fields))[0]
     assert name.type == str
     id = list(filter(lambda f: f.name == "id", employee_type_fields))[0]
@@ -310,8 +310,8 @@ def test_type_relationships():
     assert len(additional_types) == 2
     mapped_employee_type = additional_types[0]
     assert mapped_employee_type.__name__ == "Employee"
-    assert len(mapped_employee_type.__strawberry_definition__._fields) == 4
-    employee_type_fields = mapped_employee_type.__strawberry_definition__._fields
+    assert len(get_object_definition(mapped_employee_type)._fields) == 4
+    employee_type_fields = get_object_definition(mapped_employee_type)._fields
     name = list(filter(lambda f: f.name == "department_id", employee_type_fields))[0]
     assert type(name.type) == StrawberryOptional
     id = list(filter(lambda f: f.name == "department", employee_type_fields))[0]
