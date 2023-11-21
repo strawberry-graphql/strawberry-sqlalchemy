@@ -254,9 +254,7 @@ def resolve_model_nodes(
         source:
             The source model or the model type that implements the `Node` interface
         info:
-            Optional gql execution info. Make sure to always provide this or
-            otherwise, the queryset cannot be optimized in case DjangoOptimizerExtension
-            is enabled. This will also be used for `is_awaitable` check.
+            Optional gql execution info.
         session:
             A sqlalchemy session object.
         node_ids:
@@ -351,9 +349,7 @@ def resolve_model_node(
         session:
             A sqlalchemy session object.
         info:
-            Optional gql execution info. Make sure to always provide this or
-            otherwise, the queryset cannot be optimized in case DjangoOptimizerExtension
-            is enabled. This will also be used for `is_awaitable` check.
+            Optional gql execution info.
         required:
             If the return value is required to exist. If true, `qs.get()` will be
             used, which might raise `model.DoesNotExist` error if the node doesn't

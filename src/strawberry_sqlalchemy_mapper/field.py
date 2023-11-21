@@ -491,10 +491,10 @@ def field(
     --------
         It can be used both as decorator and as a normal function:
 
-        >>> @strawberry.django.type
+        >>> @strawberry_sqlalchemy_mapper.field
         >>> class X:
-        ...     field_abc: str = strawberry.django.field(description="ABC")
-        ...     @strawberry.django.field(description="ABC")
+        ...     field_abc: str = strawberry_sqlalchemy_mapper.field(description="ABC")
+        ...     @strawberry_sqlalchemy_mapper.field(description="ABC")
         ...
         ...     def field_with_resolver(self) -> str:
         ...         return "abc"
