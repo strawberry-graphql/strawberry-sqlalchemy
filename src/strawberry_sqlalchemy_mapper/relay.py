@@ -238,7 +238,6 @@ def resolve_model_nodes(
     info=None,
     node_ids=None,
     required=False,
-    filter_perms=False,
 ) -> AwaitableOrValue[
     Union[
         Iterable[_T],
@@ -306,7 +305,6 @@ def resolve_model_node(
     session: Session,
     info: Optional[Info] = ...,
     required: Literal[False] = ...,
-    filter_perms: bool = False,
 ) -> AwaitableOrValue[Optional[_T]]:
     ...
 
@@ -323,7 +321,6 @@ def resolve_model_node(
     session: Session,
     info: Optional[Info] = ...,
     required: Literal[True],
-    filter_perms: bool = False,
 ) -> AwaitableOrValue[_T]:
     ...
 
@@ -335,7 +332,6 @@ def resolve_model_node(
     session: Session,
     info: Optional[Info] = None,
     required=False,
-    filter_perms=False,
 ):
     """
     Resolve model node.
@@ -360,26 +356,15 @@ def resolve_model_node(
         The resolved node, already prefetched from the database
 
     """
-    from strawberry_sqlalchemy_mapper.mapper import StrawberrySQLAlchemyType
-
-    definition = StrawberrySQLAlchemyType[Any].from_type(source, strict=True)
-    model = definition.model
-
-    if isinstance(node_id, relay.GlobalID):
-        node_id = node_id.node_id
-
-    attrs = cast(relay.Node, source).resolve_id_attr().split("|")
-    converters = [getattr(model, attr).type.python_type for attr in attrs]
-
-    filter = dict(
-        zip(
-            cast(relay.Node, source).resolve_id_attr().split("|"),
-            (converters[i](nid) for i, nid in enumerate(node_id.split("|"))),
-        )
+    results = resolve_model_nodes(
+        source,
+        session=session,
+        node_ids=[node_id],
+        required=required,
     )
 
     try:
-        return session.get(model, filter)
+        return results.one()
     except NoResultFound:
         if not required:
             return None

@@ -492,10 +492,10 @@ def field(
         It can be used both as decorator and as a normal function:
 
         >>> @strawberry_sqlalchemy_mapper.field
-        >>> class X:
+        >>> class SomeType:
         ...     field_abc: str = strawberry_sqlalchemy_mapper.field(description="ABC")
-        ...     @strawberry_sqlalchemy_mapper.field(description="ABC")
         ...
+        ...     @strawberry_sqlalchemy_mapper.field(description="ABC")
         ...     def field_with_resolver(self) -> str:
         ...         return "abc"
 
@@ -549,7 +549,7 @@ def node(
         Annotating something like this:
 
         >>> @strawberry.type
-        >>> class X:
+        >>> class Query:
         ...     some_node: SomeType = relay.node(description="ABC")
 
         Will produce a query like this that returns `SomeType` given its id.
@@ -665,24 +665,20 @@ def connection(
         Annotating something like this:
 
         >>> @strawberry.type
-        >>> class X:
-        ...     some_node: relay.Connection[SomeType] = relay.connection(
-        ...         description="ABC",
-        ...     )
-        ...
-        ...     @relay.connection(description="ABC")
-        ...     def get_some_nodes(self, age: int) -> Iterable[SomeType]:
+        >>> class Query:
+        ...     @relay.connection(relay.ListConnection[SomeType])
+        ...     def some_connection(self, age: int) -> Iterable[SomeType]:
         ...         ...
 
         Will produce a query like this:
 
         ```
         query {
-          someNode (
+          some_connection (
             before: String
             after: String
-            first: String
-            after: String
+            first: Int
+            after: Int
             age: Int
           ) {
             totalCount
