@@ -378,6 +378,11 @@ def resolve_model_id_attr(source: Type) -> str:
 
     In case of composed primary keys, those will be returned separated by a `|`.
     """
+    cache_key = "_relay_model_id_attr"
+    # Using __dict__ instead of getattr to support inheritance
+    if (id_attr := source.__dict__.get(cache_key)) is not None:
+        return id_attr
+
     try:
         id_attr = super(source, source).resolve_id_attr()
     except NodeIDAnnotationError:
@@ -388,6 +393,7 @@ def resolve_model_id_attr(source: Type) -> str:
             key.name for key in sqlalchemy_inspect(definition.model).primary_key
         )
 
+    setattr(source, cache_key, id_attr)
     return id_attr
 
 
