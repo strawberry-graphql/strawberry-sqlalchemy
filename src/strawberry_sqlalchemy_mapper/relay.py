@@ -134,6 +134,8 @@ class KeysetConnection(relay.Connection[NodeType]):
                 )
             )
 
+        # TODO: It would be better to aboid session.run_sync in here but
+        # sqlakeyset doesn't have a `get_page` async counterpart.
         if isinstance(session, AsyncSession):
 
             async def resolve_async(nodes=nodes):
@@ -366,6 +368,8 @@ def resolve_model_node(
     try:
         return results.one()
     except NoResultFound:
+        # If returning a single result fails, return `None` if this wasn't
+        # required, otherwise reraise the exception
         if not required:
             return None
 
@@ -411,4 +415,6 @@ def resolve_model_id(
     id_attr = cast(relay.Node, source).resolve_id_attr().split("|")
 
     assert id_attr
+    # TODO: Maybe we can work with the tuples directly in the future?
+    # We would need to add support on strawberry for that first though.
     return "|".join(str(getattr(root, k)) for k in id_attr)
