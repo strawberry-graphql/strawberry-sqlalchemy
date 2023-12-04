@@ -1,4 +1,3 @@
-import ast
 import asyncio
 import collections.abc
 import dataclasses
@@ -160,6 +159,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         extra_sqlalchemy_type_to_strawberry_type_map: Optional[
             Mapping[Type[TypeEngine], Type[Any]]
         ] = None,
+        edge_type: Optional[Type] = None,
+        connection_type: Optional[Type] = None,
     ) -> None:
         if model_to_type_name is None:
             model_to_type_name = self._default_model_to_type_name
@@ -180,6 +181,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         self.mapped_interfaces = {}
         self._related_type_models = set()
         self._related_interface_models = set()
+
+        self.edge_type = edge_type
+        self.connection_type = connection_type
 
     @staticmethod
     def _default_model_to_type_name(model: Type[BaseModelType]) -> str:
@@ -220,6 +224,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Get or create a corresponding Edge model for the given type
         (to support future pagination)
         """
+        if self.edge_type is not None:
+            return self.edge_type
         edge_name = f"{type_name}Edge"
         if edge_name not in self.edge_types:
             self.edge_types[edge_name] = edge_type = strawberry.type(
@@ -238,6 +244,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Get or create a corresponding Connection model for the given type
         (to support future pagination)
         """
+        if self.connection_type is not None:
+            return self.connection_type[ForwardRef(type_name)]
         connection_name = f"{type_name}Connection"
         if connection_name not in self.connection_types:
             self.connection_types[connection_name] = connection_type = strawberry.type(
@@ -269,6 +277,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         if isinstance(column.type, Enum):
             type_annotation = column.type.python_type
+            if not hasattr(column.type, "_enum_definition"):
+                type_annotation = strawberry.enum(type_annotation)
         elif isinstance(column.type, ARRAY):
             item_type = self._convert_column_to_strawberry_type(
                 Column(column.type.item_type, nullable=False)
@@ -545,6 +555,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         model: Type[BaseModelType],
         make_interface=False,
         use_federation=False,
+        **kwargs,
     ) -> Callable[[Type[object]], Any]:
         """
         Decorate a type with this to register it as a strawberry type
@@ -627,12 +638,12 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 if key in mapper.columns or key in mapper.relationships:
                     continue
                 if key in model.__annotations__:
-                    annotation = ast.literal_eval(model.__annotations__[key])
+                    annotation = eval(model.__annotations__[key])
                     for (  # type: ignore[assignment]
                         sqlalchemy_type,
                         strawberry_type,
                     ) in self.sqlalchemy_type_to_strawberry_type_map.items():
-                        if isinstance(annotation, sqlalchemy_type):
+                        if annotation == sqlalchemy_type:
                             self._add_annotation(
                                 type_, key, strawberry_type, generated_field_keys
                             )
@@ -668,7 +679,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                             if "typing" in annotation:
                                 # Try to evaluate from existing typing imports
                                 annotation = annotation[7:]
-                            annotation = ast.literal_eval(annotation)
+                            annotation = eval(annotation)
                         except NameError:
                             raise UnsupportedDescriptorType(key)
                     self._add_annotation(
@@ -693,15 +704,19 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             # (because they may not have default values)
             type_.__annotations__.update(old_annotations)
 
+            type_name = type_.__name__
+            if "name" in kwargs:
+                type_name = kwargs["name"]
+
             if make_interface:
-                mapped_type = strawberry.interface(type_)
-                self.mapped_interfaces[type_.__name__] = mapped_type
+                mapped_type = strawberry.interface(type_, **kwargs)
+                self.mapped_interfaces[type_name] = mapped_type
             elif use_federation:
-                mapped_type = strawberry.federation.type(type_)
-                self.mapped_types[type_.__name__] = mapped_type
+                mapped_type = strawberry.federation.type(type_, **kwargs)
+                self.mapped_types[type_name] = mapped_type
             else:
-                mapped_type = strawberry.type(type_)
-                self.mapped_types[type_.__name__] = mapped_type
+                mapped_type = strawberry.type(type_, **kwargs)
+                self.mapped_types[type_name] = mapped_type
             setattr(mapped_type, _GENERATED_FIELD_KEYS_KEY, generated_field_keys)
             setattr(mapped_type, _ORIGINAL_TYPE_KEY, type_)
             return mapped_type
