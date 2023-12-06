@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.4.0 - 2023-12-06
+------------------
+
+Initial relay connection/node support using Strawberry's relay integration.
+
+Contributed by [Thiago Bellini Ribeiro](https://github.com/bellini666) via [PR #65](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/65/)
+
+
 0.3.1 - 2023-09-26
 ------------------
 
