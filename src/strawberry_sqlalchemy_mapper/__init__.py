@@ -16,7 +16,15 @@ finally:
     del version, PackageNotFoundError
 
 
+from .field import connection, field, node
 from .loader import StrawberrySQLAlchemyLoader
 from .mapper import StrawberrySQLAlchemyMapper
 
-__all__ = ["__version__", "StrawberrySQLAlchemyLoader", "StrawberrySQLAlchemyMapper"]
+__all__ = [
+    "__version__",
+    "StrawberrySQLAlchemyLoader",
+    "StrawberrySQLAlchemyMapper",
+    "field",
+    "node",
+    "connection",
+]
