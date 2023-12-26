@@ -1,7 +1,9 @@
 import enum
+import textwrap
 from typing import List, Optional
 
 import pytest
+import strawberry
 from sqlalchemy import JSON, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.orm import relationship
@@ -279,3 +281,73 @@ def test_type_relationships(employee_and_department_tables, mapper):
     assert type(name.type) == StrawberryOptional
     id = next(iter(filter(lambda f: f.name == "department", employee_type_fields)))
     assert type(id.type) == StrawberryOptional
+
+
+def test_relationships_schema(employee_and_department_tables, mapper):
+    EmployeeModel, DepartmentModel = employee_and_department_tables
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        __exclude__ = ["password_hash"]
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> Department:
+            ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    expected = '''
+    type Department {
+      id: Int!
+      name: String!
+      employees: EmployeeConnection!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      departmentId: Int
+      department: Department
+    }
+
+    type EmployeeConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [EmployeeEdge!]!
+    }
+
+    type EmployeeEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Employee!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: Department!
+    }
+    '''
+    assert str(schema) == textwrap.dedent(expected).strip()
