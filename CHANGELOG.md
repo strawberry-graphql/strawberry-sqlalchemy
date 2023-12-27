@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.4.1 - 2023-12-27
+------------------
+
+Fix a regression from 0.4.0 which was [raising an issue](https://github.com/strawberry-graphql/strawberry-sqlalchemy/issues/97)
+when trying to create a connection from the model's relationships.
+
+Contributed by [Thiago Bellini Ribeiro](https://github.com/bellini666) via [PR #106](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/106/)
+
+
 0.4.0 - 2023-12-06
 ------------------
 
