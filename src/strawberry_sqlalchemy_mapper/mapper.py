@@ -92,7 +92,7 @@ from strawberry_sqlalchemy_mapper.relay import (
     resolve_model_node,
     resolve_model_nodes,
 )
-from strawberry_sqlalchemy_mapper.scalars import Int64
+from strawberry_sqlalchemy_mapper.scalars import BigInt
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.expression import ColumnElement
@@ -180,7 +180,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
     ] = {
         Integer: int,
         Float: float,
-        BigInteger: Int64,
+        BigInteger: BigInt,
         Numeric: Decimal,
         DateTime: datetime,
         Date: date,
@@ -339,7 +339,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 return item_type
             type_annotation = List[item_type]  # type: ignore
         elif isinstance(column.type, BigInteger):
-            type_annotation = Int64
+            type_annotation = BigInt
         else:
             for (
                 sqlalchemy_type,

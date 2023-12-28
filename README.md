@@ -136,7 +136,7 @@ Natively supports the following SQLAlchemy types:
 ```python
 Integer: int,
 Float: float,
-BigInteger: Int64,
+BigInteger: BigInt,
 Numeric: Decimal,
 DateTime: datetime,
 Date: date,
