@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+0.4.2 - 2023-12-29
+------------------
+
+This change implements a new custom scalar `BigInt` that is mapped to SQLAlchemy's `BigInteger`.
+
+Contributed by [IdoKendo](https://github.com/IdoKendo) via [PR #101](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/101/)
+
+
 0.4.1 - 2023-12-27
 ------------------
 
