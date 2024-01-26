@@ -48,7 +48,7 @@ sqlakeyset = "^2.0.1695177552"
 
 [tool.poetry.group.dev.dependencies]
 asyncpg = ">=0.28,<0.30"
-black = ">=22,<24"
+black = ">=22,<25"
 importlib-metadata = ">=4.11.1,<8.0.0"
 mypy = "1.8.0"
 nox = "^2023.4.22"
