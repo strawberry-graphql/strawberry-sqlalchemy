@@ -48,10 +48,10 @@ class StrawberrySQLAlchemyLoader:
     async def _scalars_all(self, *args, **kwargs):
         if self._async_bind_factory:
             async with self._async_bind_factory() as bind:
-                return (await bind.scalars(*args, **kwargs)).all()
+                return (await bind.scalars(*args, **kwargs)).unique().all()
         else:
             assert self._bind is not None
-            return self._bind.scalars(*args, **kwargs).all()
+            return self._bind.scalars(*args, **kwargs).unique().all()
 
     def loader_for(self, relationship: RelationshipProperty) -> DataLoader:
         """
