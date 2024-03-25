@@ -161,7 +161,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         ] = None,
         edge_type: Optional[Type] = None,
         connection_type: Optional[Type] = None,
+        use_relay: bool=False,
     ) -> None:
+        self.use_relay = use_relay
         if model_to_type_name is None:
             model_to_type_name = self._default_model_to_type_name
         self.model_to_type_name = model_to_type_name
@@ -244,6 +246,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Get or create a corresponding Connection model for the given type
         (to support future pagination)
         """
+        if not self.use_relay:
+            return List[ForwardRef(type_name)]
         if self.connection_type is not None:
             return self.connection_type[ForwardRef(type_name)]
         connection_name = f"{type_name}Connection"
@@ -449,6 +453,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Return an async field resolver for the given relationship that
         returns a Connection instead of an array of objects.
         """
+        if not self.use_relay:
+            return self.relationship_resolver_for(relationship)
         relationship_resolver = self.relationship_resolver_for(relationship)
         if relationship.uselist:
             return self.make_connection_wrapper_resolver(
