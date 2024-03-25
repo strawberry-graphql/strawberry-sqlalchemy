@@ -244,7 +244,21 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Get or create a corresponding Connection model for the given type
         (to support future pagination)
         """
-        return List[ForwardRef(type_name)]
+        if self.connection_type is not None:
+            return self.connection_type[ForwardRef(type_name)]
+        connection_name = f"{type_name}Connection"
+        if connection_name not in self.connection_types:
+            self.connection_types[connection_name] = connection_type = strawberry.type(
+                dataclasses.make_dataclass(
+                    connection_name,
+                    [
+                        ("edges", List[self._edge_type_for(type_name)]),  # type: ignore
+                    ],
+                )
+            )
+            setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
+            setattr(connection_type, _IS_GENERATED_CONNECTION_TYPE_KEY, True)
+        return self.connection_types[connection_name]
 
     def _get_polymorphic_base_model(
         self, model: Type[BaseModelType]
@@ -435,7 +449,14 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Return an async field resolver for the given relationship that
         returns a Connection instead of an array of objects.
         """
-        return self.relationship_resolver_for(relationship)
+        relationship_resolver = self.relationship_resolver_for(relationship)
+        if relationship.uselist:
+            return self.make_connection_wrapper_resolver(
+                relationship_resolver,
+                self.model_to_type_or_interface_name(relationship.entity.entity),  # type: ignore[arg-type]
+            )
+        else:
+            return relationship_resolver
 
     def _is_connection_type(self, type_: Union[Type[Any], ForwardRef]) -> bool:
         """
