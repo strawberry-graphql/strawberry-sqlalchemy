@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.4.3 - 2024-05-22
+------------------
+
+Fix an issue where auto generated connections were missing some expected
+attributes to be properly instantiated.
+
+Contributed by [Thiago Bellini Ribeiro](https://github.com/bellini666) via [PR #137](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/137/)
+
+
 0.4.2 - 2023-12-29
 ------------------
 
