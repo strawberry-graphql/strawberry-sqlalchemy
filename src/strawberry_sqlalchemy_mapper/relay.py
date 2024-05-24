@@ -150,7 +150,9 @@ def exclude_relay(
     relationship: RelationshipProperty,
 ) -> RelationshipProperty:
     """
-    Wrap a relationship to use traditional GraphQL lists
+    Wrap a relationship to use traditional GraphQL lists,
+    which return all related items in a single list,
+    instead of relay pagination, which provides a cursor-based approach.
     in place of relay pagination.
     """
 
