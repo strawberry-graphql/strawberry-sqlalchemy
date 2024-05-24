@@ -150,13 +150,11 @@ class StrawberrySQLAlchemyType(Generic[BaseModelType]):
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self:
-        ...
+    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self: ...
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]:
-        ...
+    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]: ...
 
     @classmethod
     def from_type(
@@ -387,6 +385,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         else:
             self._related_type_models.add(relationship_model)
         if relationship.uselist:
+            # Use list if excluding relay pagination
+            if getattr(relationship, "__exclude_relay__", False):
+                return List[ForwardRef(type_name)]
+
             return self._connection_type_for(type_name)
         else:
             if self._get_relationship_is_optional(relationship):

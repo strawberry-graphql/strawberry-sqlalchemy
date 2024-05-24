@@ -27,7 +27,7 @@ from strawberry.type import StrawberryContainer, get_object_definition
 if TYPE_CHECKING:
     from typing_extensions import Literal, Self
 
-    from sqlalchemy.orm import Query, Session
+    from sqlalchemy.orm import Query, RelationshipProperty, Session
     from strawberry.types.info import Info
     from strawberry.utils.await_maybe import AwaitableOrValue
 
@@ -146,6 +146,19 @@ class KeysetConnection(relay.Connection[NodeType]):
         return resolve_nodes(session)
 
 
+def exclude_relay(
+    relationship: RelationshipProperty,
+) -> RelationshipProperty:
+    """
+    Wrap a relationship to use traditional GraphQL lists
+    in place of relay pagination.
+    """
+
+    relationship.__exclude_relay__ = True
+
+    return relationship
+
+
 @overload
 def resolve_model_nodes(
     source: Union[
@@ -158,8 +171,7 @@ def resolve_model_nodes(
     info: Optional[Info] = None,
     node_ids: Iterable[Union[str, relay.GlobalID]],
     required: Literal[True],
-) -> AwaitableOrValue[Iterable[_T]]:
-    ...
+) -> AwaitableOrValue[Iterable[_T]]: ...
 
 
 @overload
@@ -174,8 +186,7 @@ def resolve_model_nodes(
     info: Optional[Info] = None,
     node_ids: None = None,
     required: Literal[True],
-) -> AwaitableOrValue[Iterable[_T]]:
-    ...
+) -> AwaitableOrValue[Iterable[_T]]: ...
 
 
 @overload
@@ -190,8 +201,7 @@ def resolve_model_nodes(
     info: Optional[Info] = None,
     node_ids: Iterable[Union[str, relay.GlobalID]],
     required: Literal[False],
-) -> AwaitableOrValue[Iterable[Optional[_T]]]:
-    ...
+) -> AwaitableOrValue[Iterable[Optional[_T]]]: ...
 
 
 @overload
@@ -206,8 +216,7 @@ def resolve_model_nodes(
     info: Optional[Info] = None,
     node_ids: None = None,
     required: Literal[False],
-) -> AwaitableOrValue[Optional[Iterable[_T]]]:
-    ...
+) -> AwaitableOrValue[Optional[Iterable[_T]]]: ...
 
 
 @overload
@@ -229,8 +238,7 @@ def resolve_model_nodes(
         Iterable[Optional[_T]],
         Optional[Query[_T]],
     ]
-]:
-    ...
+]: ...
 
 
 def resolve_model_nodes(
@@ -307,8 +315,7 @@ def resolve_model_node(
     session: Session,
     info: Optional[Info] = ...,
     required: Literal[False] = ...,
-) -> AwaitableOrValue[Optional[_T]]:
-    ...
+) -> AwaitableOrValue[Optional[_T]]: ...
 
 
 @overload
@@ -323,8 +330,7 @@ def resolve_model_node(
     session: Session,
     info: Optional[Info] = ...,
     required: Literal[True],
-) -> AwaitableOrValue[_T]:
-    ...
+) -> AwaitableOrValue[_T]: ...
 
 
 def resolve_model_node(
