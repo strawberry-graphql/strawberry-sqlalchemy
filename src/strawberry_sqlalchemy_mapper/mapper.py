@@ -533,7 +533,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         returns a Connection instead of an array of objects.
         """
         relationship_resolver = self.relationship_resolver_for(relationship)
-        if relationship.uselist:
+        if relationship.uselist and not getattr(
+            relationship, "__exclude_relay__", False
+        ):
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
                 self.model_to_type_or_interface_name(relationship.entity.entity),  # type: ignore[arg-type]
