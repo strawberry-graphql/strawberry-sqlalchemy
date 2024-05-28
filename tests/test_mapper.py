@@ -10,6 +10,7 @@ from sqlalchemy.orm import relationship
 from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.type import StrawberryOptional
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
+from strawberry_sqlalchemy_mapper.relay import exclude_relay
 
 
 @pytest.fixture
@@ -263,6 +264,32 @@ def test_interface_and_type_polymorphic(
     assert {"Employee", "Lawyer"} == {t.__name__ for t in additional_types}
 
 
+def test_exclude_relay(employee_and_department_tables, mapper):
+    Employee, Department = employee_and_department_tables
+    Department.employees = exclude_relay(Department.employees)
+
+    @mapper.type(Employee)
+    class Employee:
+        pass
+
+    @mapper.type(Department)
+    class Department:
+        pass
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 2
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    mapped_department_type = additional_types[1]
+    assert mapped_department_type.__name__ == "Department"
+    assert len(mapped_department_type.__strawberry_definition__._fields) == 3
+    department_type_fields = mapped_department_type.__strawberry_definition__._fields
+    name = next(iter(filter(lambda f: f.name == "employees", department_type_fields)))
+    assert type(name.type) != StrawberryOptional
+    assert type(name.type) == List[mapped_employee_type]
+
+
 def test_type_relationships(employee_and_department_tables, mapper):
     Employee, _ = employee_and_department_tables
 
@@ -297,8 +324,7 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     @strawberry.type
     class Query:
         @strawberry.field
-        def departments(self) -> Department:
-            ...
+        def departments(self) -> Department: ...
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
