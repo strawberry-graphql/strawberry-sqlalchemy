@@ -27,7 +27,7 @@ from strawberry.type import StrawberryContainer, get_object_definition
 if TYPE_CHECKING:
     from typing_extensions import Literal, Self
 
-    from sqlalchemy.orm import Query, RelationshipProperty, Session
+    from sqlalchemy.orm import Query, Session
     from strawberry.types.info import Info
     from strawberry.utils.await_maybe import AwaitableOrValue
 
@@ -144,20 +144,6 @@ class KeysetConnection(relay.Connection[NodeType]):
             return resolve_async()
 
         return resolve_nodes(session)
-
-
-def exclude_relay(
-    relationship: RelationshipProperty,
-) -> RelationshipProperty:
-    """
-    Wrap a relationship to use traditional GraphQL lists,
-    which return all related items in a single list,
-    instead of relay pagination, which provides a cursor-based approach.
-    """
-
-    relationship.__exclude_relay__ = True
-
-    return relationship
 
 
 @overload
