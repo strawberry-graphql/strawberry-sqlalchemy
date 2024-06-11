@@ -10,7 +10,6 @@ from sqlalchemy.orm import relationship
 from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.type import StrawberryOptional
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
-from strawberry_sqlalchemy_mapper.relay import exclude_relay
 
 
 @pytest.fixture
@@ -264,9 +263,8 @@ def test_interface_and_type_polymorphic(
     assert {"Employee", "Lawyer"} == {t.__name__ for t in additional_types}
 
 
-def test_exclude_relay(employee_and_department_tables, mapper):
+def test_use_list(employee_and_department_tables, mapper):
     Employee, Department = employee_and_department_tables
-    Department.employees = exclude_relay(Department.employees)
 
     @mapper.type(Employee)
     class Employee:
@@ -274,7 +272,7 @@ def test_exclude_relay(employee_and_department_tables, mapper):
 
     @mapper.type(Department)
     class Department:
-        pass
+        __use_list__ = ["employees"]
 
     mapper.finalize()
     additional_types = list(mapper.mapped_types.values())
