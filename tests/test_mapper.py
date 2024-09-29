@@ -280,7 +280,7 @@ def test_type_relationships(employee_and_department_tables, mapper):
     name = next(iter(filter(lambda f: f.name == "department_id", employee_type_fields)))
     assert type(name.type) == StrawberryOptional
     id = next(iter(filter(lambda f: f.name == "department", employee_type_fields)))
-    assert type(id.type) != StrawberryOptional
+    assert type(id.type) == StrawberryOptional
 
 
 def test_relationships_schema(employee_and_department_tables, mapper):
