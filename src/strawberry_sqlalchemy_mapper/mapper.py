@@ -72,12 +72,12 @@ from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.sql.type_api import TypeEngine
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
-from strawberry.field import StrawberryField
-from strawberry.lazy_type import LazyType
-from strawberry.private import is_private
 from strawberry.scalars import JSON as StrawberryJSON
-from strawberry.type import WithStrawberryObjectDefinition, get_object_definition
 from strawberry.types import Info
+from strawberry.types.base import WithStrawberryObjectDefinition, get_object_definition
+from strawberry.types.field import StrawberryField
+from strawberry.types.lazy_type import LazyType
+from strawberry.types.private import is_private
 
 from strawberry_sqlalchemy_mapper.exc import (
     HybridPropertyNotAnnotated,
