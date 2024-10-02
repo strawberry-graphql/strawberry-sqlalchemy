@@ -140,7 +140,7 @@ jobs:
           python-version: "3.11"
           cache: "poetry"
 
-      - run: poetry install --with integrations
+      - run: poetry run pip install --upgrade pip setuptools wheel
         if: steps.setup-python.outputs.cache-hit != 'true'
       # Since we are running all the integrations at once, we can't use
       # pydantic v2. It is not compatible with starlette yet
