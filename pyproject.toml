@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "strawberry-sqlalchemy-mapper"
 packages = [ { include = "strawberry_sqlalchemy_mapper", from = "src" } ]
-version = "0.4.3"
+version = "0.4.4"
 description = "A library for autogenerating Strawberry GraphQL types from SQLAlchemy models."
 authors = ["Tim Dumol <tim@timdumol.com>"]
 license = "MIT"
