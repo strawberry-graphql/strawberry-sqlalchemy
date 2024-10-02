@@ -50,6 +50,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: ikalnytskyi/action-setup-postgres@v4
       - uses: actions/setup-python@v5
         with:
           python-version: |
@@ -60,7 +61,7 @@ jobs:
             3.12
             3.13-dev
 
-      - run: pip install poetry nox nox-poetry uv
+      - run: pip install poetry nox nox-poetry coverage
       - run: nox -r -t tests -s "${{ matrix.session.session }}"
       - name: coverage xml
         run: coverage xml -i
