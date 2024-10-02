@@ -62,7 +62,7 @@ jobs:
             3.13-dev
 
       - run: pip install poetry nox nox-poetry coverage
-      - run: nox -r -t tests -s "${{ matrix.session.session }}"
+      - run: nox -r -t tests -s "${{ matrix.session.session }}" --no-asyncio
       - name: coverage xml
         run: coverage xml -i
         if: ${{ always() }}
