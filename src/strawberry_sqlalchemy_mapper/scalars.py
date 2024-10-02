@@ -7,4 +7,5 @@ BigInt = strawberry.scalar(
     serialize=lambda v: int(v),
     parse_value=lambda v: str(v),
     description="BigInt field",
+    name="BigInt",
 )
