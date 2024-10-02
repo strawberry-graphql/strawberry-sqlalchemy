@@ -62,11 +62,16 @@ jobs:
 
       - run: pip install poetry nox nox-poetry uv
       - run: nox -r -t tests -s "${{ matrix.session.session }}"
-      - uses: actions/upload-artifact@v4
+      - name: coverage xml
+        run: coverage xml -i
+        if: ${{ always() }}
+
+      - uses: codecov/codecov-action@v3
         if: ${{ always() }}
         with:
-          name: coverage-${{ matrix.session.session }}
-          path: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          verbose: true
 
   benchmarks:
     name: 📈 Benchmarks
