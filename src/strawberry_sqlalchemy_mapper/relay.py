@@ -22,7 +22,7 @@ from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from strawberry import relay
 from strawberry.relay.exceptions import NodeIDAnnotationError
 from strawberry.relay.types import NodeType
-from strawberry.type import StrawberryContainer, get_object_definition
+from strawberry.types.base import StrawberryContainer, get_object_definition
 
 if TYPE_CHECKING:
     from typing_extensions import Literal, Self
