@@ -20,7 +20,7 @@ on:
 jobs:
   generate-jobs-tests:
     name: 💻 Generate test matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       sessions: ${{ steps.set-matrix.outputs.sessions }}
     steps:
@@ -76,7 +76,7 @@ jobs:
 
   benchmarks:
     name: 📈 Benchmarks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
 
