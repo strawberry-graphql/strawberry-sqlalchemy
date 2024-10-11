@@ -26,11 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m venv .venv
-      - run: source .venv/bin/activate
-      - run: pip install poetry nox nox-poetry
       - id: set-matrix
         shell: bash
         run: |
+          . .venv/bin/activate 
+          pip install poetry nox nox-poetry
           echo sessions=$(
             nox --json -t tests -l |
             jq 'map(
