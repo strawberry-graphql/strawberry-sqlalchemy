@@ -41,7 +41,7 @@ version_scheme = "no-guess-dev"
 [tool.poetry.dependencies]
 python = "^3.8"
 sqlalchemy = {extras = ["asyncio"], version = ">=1.4"}
-strawberry-graphql = ">=0.95"
+strawberry-graphql = ">=0.236.0"
 sentinel = ">=0.3,<1.1"
 greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 sqlakeyset = "^2.0.1695177552"
