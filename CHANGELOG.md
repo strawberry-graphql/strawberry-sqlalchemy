@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.4.5 - 2024-10-17
+------------------
+
+Updated imports to be compatible with strawberry 0.236.0
+Increased the minimum required strawberry version to 0.236.0
+
+Contributed by [Hendrik](https://github.com/novag) via [PR #187](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/187/)
+
+
 0.4.4 - 2024-10-02
 ------------------
 
