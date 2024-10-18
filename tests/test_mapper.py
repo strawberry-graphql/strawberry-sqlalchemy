@@ -43,7 +43,7 @@ def employee_table(base):
     class Employee(base):
         __tablename__ = "employee"
         id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
+        name = Column(String, nullable=False, doc="The name of the employee")
 
     return Employee
 
@@ -351,3 +351,29 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     }
     '''
     assert str(schema) == textwrap.dedent(expected).strip()
+
+def test_mapper_support_description(mapper, employee_table):
+    """
+    Test that the mapper supports the description attribute to be passed to the generated strawberry type in two forms:
+        1. The type description is mapped to the strawberry.type description
+        2. The SQLAlchemy column doc is mapped to strawberry field description
+    """
+    EMPLOYEE_TYPE_DESCRIPTION = "This is a type to describe an employee"
+    tested_field_name, tested_field_description = ("name", "The name of the employee")
+    Employee = employee_table
+
+    @mapper.type(Employee, description=EMPLOYEE_TYPE_DESCRIPTION)
+    class Employee:
+        pass
+
+    mapper.finalize()
+    additional_type = list(mapper.mapped_types.values())
+    assert  len(additional_type) == 1
+    mapped_employee_type = additional_type[0]
+    assert mapped_employee_type.__strawberry_definition__.description == EMPLOYEE_TYPE_DESCRIPTION
+    mapped_employee_type_fields  = mapped_employee_type.__strawberry_definition__.fields
+    assert len(mapped_employee_type_fields) > 0
+    relevant_employee_field = next(field for field in mapped_employee_type_fields if field.name == tested_field_name)
+    assert relevant_employee_field is not None
+    assert relevant_employee_field.description == tested_field_description
+
