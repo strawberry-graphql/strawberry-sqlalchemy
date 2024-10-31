@@ -281,8 +281,8 @@ def test_use_list(employee_and_department_tables, mapper):
     assert mapped_employee_type.__name__ == "Employee"
     mapped_department_type = additional_types[1]
     assert mapped_department_type.__name__ == "Department"
-    assert len(mapped_department_type.__strawberry_definition__._fields) == 3
-    department_type_fields = mapped_department_type.__strawberry_definition__._fields
+    assert len(mapped_department_type.__strawberry_definition__.fields) == 3
+    department_type_fields = mapped_department_type.__strawberry_definition__.fields
     name = next(iter(filter(lambda f: f.name == "employees", department_type_fields)))
     assert type(name.type) != StrawberryOptional
     assert type(name.type) == List[mapped_employee_type]
