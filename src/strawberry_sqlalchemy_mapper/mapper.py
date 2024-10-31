@@ -387,7 +387,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.uselist:
             # Use list if excluding relay pagination
             if use_list:
-                return List[ForwardRef(type_name)]
+                return List[ForwardRef(type_name)] # type: ignore
 
             return self._connection_type_for(type_name)
         else:
