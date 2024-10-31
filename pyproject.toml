@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "strawberry-sqlalchemy-mapper"
 packages = [ { include = "strawberry_sqlalchemy_mapper", from = "src" } ]
-version = "0.4.3"
+version = "0.4.5"
 description = "A library for autogenerating Strawberry GraphQL types from SQLAlchemy models."
 authors = ["Tim Dumol <tim@timdumol.com>"]
 license = "MIT"
@@ -41,7 +41,7 @@ version_scheme = "no-guess-dev"
 [tool.poetry.dependencies]
 python = "^3.8"
 sqlalchemy = {extras = ["asyncio"], version = ">=1.4"}
-strawberry-graphql = ">=0.95"
+strawberry-graphql = ">=0.236.0"
 sentinel = ">=0.3,<1.1"
 greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
 sqlakeyset = "^2.0.1695177552"

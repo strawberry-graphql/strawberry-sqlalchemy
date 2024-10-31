@@ -33,23 +33,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Query, Session
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
-from strawberry.arguments import StrawberryArgument, argument
 from strawberry.extensions.field_extension import (
     FieldExtension,
-)
-from strawberry.field import (
-    _RESOLVER_TYPE,
-    StrawberryField,
 )
 from strawberry.permission import BasePermission
 from strawberry.relay.exceptions import RelayWrongAnnotationError
 from strawberry.relay.types import NodeIterableType
-from strawberry.type import (
+from strawberry.types import Info
+from strawberry.types.arguments import StrawberryArgument, argument
+from strawberry.types.base import (
     StrawberryList,
     StrawberryOptional,
     get_object_definition,
 )
-from strawberry.types import Info
+from strawberry.types.field import (
+    _RESOLVER_TYPE,
+    StrawberryField,
+)
 from strawberry.types.fields.resolver import StrawberryResolver
 from strawberry.utils.aio import asyncgen_to_list
 
@@ -210,7 +210,7 @@ class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
             resolved_nodes = {
                 node_t: (
                     session.run_sync(
-                        lambda s, node_t=node_t, node_ids=node_ids: list(
+                        lambda s, node_t=node_t, node_ids=node_ids: list(  # type: ignore
                             node_t.resolve_nodes(
                                 info=info,
                                 node_ids=node_ids,

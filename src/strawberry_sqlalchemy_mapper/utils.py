@@ -5,7 +5,7 @@ from typing import (
     overload,
 )
 
-from strawberry.type import (
+from strawberry.types.base import (
     StrawberryContainer,
     StrawberryType,
 )
