@@ -8,7 +8,7 @@ from sqlalchemy import JSON, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.orm import relationship
 from strawberry.scalars import JSON as StrawberryJSON
-from strawberry.types.base import StrawberryOptional
+from strawberry.types.base import StrawberryList, StrawberryOptional
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
 
@@ -283,9 +283,13 @@ def test_use_list(employee_and_department_tables, mapper):
     assert mapped_department_type.__name__ == "Department"
     assert len(mapped_department_type.__strawberry_definition__.fields) == 3
     department_type_fields = mapped_department_type.__strawberry_definition__.fields
-    name = next(iter(filter(lambda f: f.name == "employees", department_type_fields)))
-    assert type(name.type) != StrawberryOptional
-    assert type(name.type) == List[mapped_employee_type]
+
+    name = next(
+        (field for field in department_type_fields if field.name == "employees"), None
+    )
+    assert name is not None
+    assert isinstance(name.type, StrawberryOptional) is False
+    assert type(name.type) == StrawberryList
 
 
 def test_type_relationships(employee_and_department_tables, mapper):
