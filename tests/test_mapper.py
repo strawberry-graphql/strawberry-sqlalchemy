@@ -289,7 +289,7 @@ def test_use_list(employee_and_department_tables, mapper):
     )
     assert name is not None
     assert isinstance(name.type, StrawberryOptional) is False
-    assert type(name.type) == StrawberryList
+    assert isinstance(name.type, StrawberryList) is True
 
 
 def test_type_relationships(employee_and_department_tables, mapper):
