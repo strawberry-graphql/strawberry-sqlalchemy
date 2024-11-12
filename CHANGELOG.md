@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.5.0 - 2024-11-12
+------------------
+
+Add an optional function to exclude relationships from relay pagination and use traditional strawberry lists.
+Default behavior preserves original behavior for backwords compatibilty.
+
+Contributed by [Juniper](https://github.com/fruitymedley) via [PR #168](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/168/)
+
+
 0.4.5 - 2024-10-17
 ------------------
 
