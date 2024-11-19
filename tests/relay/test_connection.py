@@ -869,6 +869,7 @@ async def test_query_with_secondary_table(
             )
         })
         assert result.errors is None
+        # breakpoint()
         assert result.data == {
             'employees': {
                 'edges': [
@@ -989,7 +990,7 @@ async def test_query_with_secondary_table_without_list_connection(
             )
         })
         assert result.errors is None
-        breakpoint()
+        # breakpoint()
         assert result.data == {
                 'employees': [
                     {
@@ -1106,7 +1107,7 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
             )
         })
         assert result.errors is None
-        breakpoint()
+        # breakpoint()
         assert result.data == {
                 'employees': [
                     {

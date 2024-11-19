@@ -108,7 +108,7 @@ class StrawberrySQLAlchemyLoader:
                             [
                                 getattr(row, remote[0].key)
                                 for remote in relationship.local_remote_pairs or []
-                                if remote[0].key is not None and remote[0].table == related_model_table
+                                if remote[0].key is not None and relationship.local_remote_pairs[1][0].table == related_model_table
                             ]
                         )
 
@@ -116,6 +116,8 @@ class StrawberrySQLAlchemyLoader:
                 # breakpoint()
                 for row in rows:
                     grouped_keys[group_by_remote_key(row)].append(row)
+
+                # breakpoint()
                 if relationship.uselist:
                     return [grouped_keys[key] for key in keys]
                 else:
