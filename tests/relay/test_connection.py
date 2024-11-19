@@ -1,13 +1,13 @@
-from typing import Any
+from typing import Any, List
 
 import pytest
 import strawberry
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship, Session
 from strawberry import relay
-from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper, connection
+from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper, connection, StrawberrySQLAlchemyLoader
 from strawberry_sqlalchemy_mapper.relay import KeysetConnection
 
 
@@ -37,7 +37,8 @@ def test_query_empty(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -74,7 +75,8 @@ def test_query(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -259,7 +261,8 @@ def test_query_with_first(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -319,7 +322,8 @@ def test_query_with_first_and_after(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -381,7 +385,8 @@ def test_query_with_last(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -441,7 +446,8 @@ def test_query_with_last_and_before(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -467,7 +473,8 @@ def test_query_with_last_and_before(
         session.commit()
 
         result = schema.execute_sync(
-            query, {"first": 1, "before": relay.to_base64("arrayconnection", 2)}
+            query, {"first": 1, "before": relay.to_base64(
+                "arrayconnection", 2)}
         )
         assert result.errors is None
 
@@ -755,3 +762,396 @@ async def test_query_keyset_async(
                 },
             }
         }
+
+
+@pytest.fixture
+def secondary_tables(base):
+    EmployeeDepartmentJoinTable = Table(
+        "employee_department_join_table",
+        base.metadata,
+        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
+        Column("department_id", ForeignKey(
+            "department.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        role = Column(String, nullable=False)
+        department = relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        employees = relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+            uselist=False
+        )
+
+    return Employee, Department
+
+
+async def test_query_with_secondary_table(
+    secondary_tables,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @strawberry.type
+    class Query:
+        employees: relay.ListConnection[Employee] = connection(
+            sessionmaker=async_sessionmaker)
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            employees {
+                edges {
+                    node {
+                        id
+                        name
+                        role
+                        department {
+                            edges {
+                                node {
+                                    id
+                                    name
+                                    employees {
+                                        id
+                                        name
+                                        role
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        department = DepartmentModel(name="Department Test")
+        e1 = EmployeeModel(name="John", role="Developer")
+        e2 = EmployeeModel(name="Bill", role="Doctor")
+        e3 = EmployeeModel(name="Maria", role="Teacher")
+        e1.department.append(department)
+        session.add_all([department, e1, e2, e3])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        assert result.data == {
+            'employees': {
+                'edges': [
+                    {
+                        'node': {
+                            'id': 1,
+                            'name': 'John',
+                            'role': 'Developer',
+                            'department': {
+                                    'edges': [
+                                        {
+                                            'node': {
+                                                'id': 1,
+                                                'name': 'Department Test',
+                                                'employees': {
+                                                    'id': 1,
+                                                    'name': 'John',
+                                                    'role': 'Developer'
+                                                }
+                                            }
+                                        }
+                                    ]
+                            }
+                        }
+                    },
+                    {
+                        'node': {
+                            'id': 2,
+                            'name': 'Bill',
+                            'role': 'Doctor',
+                            'department': {
+                                    'edges': []
+                            }
+                        }
+                    },
+                    {
+                        'node': {
+                            'id': 3,
+                            'name': 'Maria',
+                            'role': 'Teacher',
+                            'department': {
+                                    'edges': []
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+
+
+async def test_query_with_secondary_table_without_list_connection(
+    secondary_tables,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def employees(self) -> List[Employee]:
+            async with async_sessionmaker() as session:
+                result = await session.execute(select(EmployeeModel))
+                return result.scalars().all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            employees {
+                id
+                name
+                role
+                department {
+                    edges {
+                        node {
+                            id
+                            name
+                            employees {
+                                id
+                                name
+                                role
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        department = DepartmentModel(name="Department Test")
+        e1 = EmployeeModel(name="John", role="Developer")
+        e2 = EmployeeModel(name="Bill", role="Doctor")
+        e3 = EmployeeModel(name="Maria", role="Teacher")
+        e1.department.append(department)
+        session.add_all([department, e1, e2, e3])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        breakpoint()
+        assert result.data == {
+                'employees': [
+                    {
+                        'id': 1,
+                        'name': 'John',
+                        'role': 'Developer',
+                        'department': {
+                            'edges': [
+                                {
+                                    'node': {
+                                        'id': 1,
+                                        'name': 'Department Test',
+                                        'employees': {
+                                            'id': 1,
+                                            'name': 'John',
+                                            'role': 'Developer'
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        'id': 2,
+                        'name': 'Bill',
+                        'role': 'Doctor',
+                        'department': {
+                            'edges': []
+                        }
+                    },
+                    {
+                        'id': 3,
+                        'name': 'Maria',
+                        'role': 'Teacher',
+                        'department': {
+                            'edges': []
+                        }
+                    }
+                ]
+            }
+
+
+async def test_query_with_secondary_table_with_values_with_different_ids(
+    secondary_tables,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    # This test ensures that the `keys` variable used inside `StrawberrySQLAlchemyLoader.loader_for` does not incorrectly repeat values (e.g., ((1, 1), (4, 4))) as observed in some test scenarios.
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def employees(self) -> List[Employee]:
+            async with async_sessionmaker() as session:
+                result = await session.execute(select(EmployeeModel))
+                return result.scalars().all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            employees {
+                id
+                name
+                role
+                department {
+                    edges {
+                        node {
+                            id
+                            name
+                            employees {
+                                id
+                                name
+                                role
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        department1 = DepartmentModel(id=10, name="Department Test 1")
+        department2 = DepartmentModel(id=3, name="Department Test 2")
+        e1 = EmployeeModel(id=1, name="John", role="Developer")
+        e2 = EmployeeModel(id=5, name="Bill", role="Doctor")
+        e3 = EmployeeModel(id=4, name="Maria", role="Teacher")
+        e1.department.append(department2)
+        e2.department.append(department1)
+        session.add_all([department1, department2, e1, e2, e3])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        breakpoint()
+        assert result.data == {
+                'employees': [
+                    {
+                        'id': 1,
+                        'name': 'John',
+                        'role': 'Developer',
+                        'department': {
+                            'edges': [
+                                {
+                                    'node': {
+                                        'id': 1,
+                                        'name': 'Department Test',
+                                        'employees': {
+                                            'id': 1,
+                                            'name': 'John',
+                                            'role': 'Developer'
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        'id': 2,
+                        'name': 'Bill',
+                        'role': 'Doctor',
+                        'department': {
+                            'edges': []
+                        }
+                    },
+                    {
+                        'id': 3,
+                        'name': 'Maria',
+                        'role': 'Teacher',
+                        'department': {
+                            'edges': []
+                        }
+                    }
+                ]
+            }
+
+
+
+
+# TODO
+# test with different ids
+# add a test on Loader to see
+# Add test with query by secondary id

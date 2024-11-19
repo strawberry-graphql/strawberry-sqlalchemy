@@ -154,7 +154,8 @@ class StrawberrySQLAlchemyType(Generic[BaseModelType]):
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]: ...
+    def from_type(cls, type_: type, *,
+                  strict: bool = False) -> Optional[Self]: ...
 
     @classmethod
     def from_type(
@@ -165,7 +166,8 @@ class StrawberrySQLAlchemyType(Generic[BaseModelType]):
     ) -> Optional[Self]:
         definition = getattr(type_, cls.TYPE_KEY_NAME, None)
         if strict and definition is None:
-            raise TypeError(f"{type_!r} does not have a StrawberrySQLAlchemyType in it")
+            raise TypeError(
+                f"{type_!r} does not have a StrawberrySQLAlchemyType in it")
         return definition
 
 
@@ -228,8 +230,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
     def __init__(
         self,
-        model_to_type_name: Optional[Callable[[Type[BaseModelType]], str]] = None,
-        model_to_interface_name: Optional[Callable[[Type[BaseModelType]], str]] = None,
+        model_to_type_name: Optional[Callable[[
+            Type[BaseModelType]], str]] = None,
+        model_to_interface_name: Optional[Callable[[
+            Type[BaseModelType]], str]] = None,
         extra_sqlalchemy_type_to_strawberry_type_map: Optional[
             Mapping[Type[TypeEngine], Type[Any]]
         ] = None,
@@ -295,7 +299,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         edge_name = f"{type_name}Edge"
         if edge_name not in self.edge_types:
-            lazy_type = StrawberrySQLAlchemyLazy(type_name=type_name, mapper=self)
+            lazy_type = StrawberrySQLAlchemyLazy(
+                type_name=type_name, mapper=self)
             self.edge_types[edge_name] = edge_type = strawberry.type(
                 dataclasses.make_dataclass(
                     edge_name,
@@ -314,14 +319,16 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         connection_name = f"{type_name}Connection"
         if connection_name not in self.connection_types:
             edge_type = self._edge_type_for(type_name)
-            lazy_type = StrawberrySQLAlchemyLazy(type_name=type_name, mapper=self)
+            lazy_type = StrawberrySQLAlchemyLazy(
+                type_name=type_name, mapper=self)
             self.connection_types[connection_name] = connection_type = strawberry.type(
                 dataclasses.make_dataclass(
                     connection_name,
                     [
                         ("edges", List[edge_type]),  # type: ignore[valid-type]
                     ],
-                    bases=(relay.ListConnection[lazy_type],),  # type: ignore[valid-type]
+                    # type: ignore[valid-type]
+                    bases=(relay.ListConnection[lazy_type],),
                 )
             )
             setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
@@ -387,7 +394,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.uselist:
             # Use list if excluding relay pagination
             if use_list:
-                return List[ForwardRef(type_name)] # type: ignore
+                return List[ForwardRef(type_name)]  # type: ignore
 
             return self._connection_type_for(type_name)
         else:
@@ -451,7 +458,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     strawberry_type.__forward_arg__
                 )
             else:
-                strawberry_type = self._connection_type_for(strawberry_type.__name__)
+                strawberry_type = self._connection_type_for(
+                    strawberry_type.__name__)
         return strawberry_type
 
     def make_connection_wrapper_resolver(
@@ -500,13 +508,31 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             if relationship.key not in instance_state.unloaded:
                 related_objects = getattr(self, relationship.key)
             else:
-                relationship_key = tuple(
-                    [
-                        getattr(self, local.key)
-                        for local, _ in relationship.local_remote_pairs or []
-                        if local.key
-                    ]
-                )
+                if relationship.secondary is None:
+                    relationship_key = tuple(
+                        [
+                            getattr(self, local.key)
+                            for local, _ in relationship.local_remote_pairs or []
+                            if local.key
+                        ]
+                    )
+                else:
+                    # If has a secondary table, gets only the first id since the other id cannot be get without a query
+                    # breakpoint()
+                    # local_remote_pairs_secondary_table_local = relationship.local_remote_pairs[
+                    #     0][0]
+                    # relationship_key = tuple(
+                    #     [getattr(self, local_remote_pairs_secondary_table_local.key),]
+                    # )
+                    relationship_key = tuple(
+                        [
+                            getattr(self, local.key)
+                            for local, _ in relationship.local_remote_pairs or []
+                            if local.key
+                        ]
+                    )
+                    # breakpoint()
+
                 if any(item is None for item in relationship_key):
                     if relationship.uselist:
                         return []
@@ -516,6 +542,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     loader = info.context["sqlalchemy_loader"]
                 else:
                     loader = info.context.sqlalchemy_loader
+                # breakpoint()
                 related_objects = await loader.loader_for(relationship).load(
                     relationship_key
                 )
@@ -536,7 +563,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.uselist and not use_list:
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
-                self.model_to_type_or_interface_name(relationship.entity.entity),  # type: ignore[arg-type]
+                self.model_to_type_or_interface_name(
+                    relationship.entity.entity),  # type: ignore[arg-type]
             )
         else:
             return relationship_resolver
@@ -554,13 +582,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         Return an async field resolver for the given association proxy.
         """
         in_between_relationship = mapper.relationships[descriptor.target_collection]
-        in_between_resolver = self.relationship_resolver_for(in_between_relationship)
+        in_between_resolver = self.relationship_resolver_for(
+            in_between_relationship)
         in_between_mapper: Mapper = mapper.relationships[  # type: ignore[assignment]
             descriptor.target_collection
         ].entity
         assert descriptor.value_attr in in_between_mapper.relationships
         end_relationship = in_between_mapper.relationships[descriptor.value_attr]
-        end_relationship_resolver = self.relationship_resolver_for(end_relationship)
+        end_relationship_resolver = self.relationship_resolver_for(
+            end_relationship)
         end_type_name = self.model_to_type_or_interface_name(
             end_relationship.entity.entity  # type: ignore[arg-type]
         )
@@ -587,7 +617,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     if outputs and isinstance(outputs[0], list):
                         outputs = list(chain.from_iterable(outputs))
                     else:
-                        outputs = [output for output in outputs if output is not None]
+                        outputs = [
+                            output for output in outputs if output is not None]
                 else:
                     outputs = await end_relationship_resolver(in_between_objects, info)
                 if not isinstance(outputs, collections.abc.Iterable):
@@ -683,7 +714,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     setattr(type_, key, field(resolver=val))
                     generated_field_keys.append(key)
 
-            self._handle_columns(mapper, type_, excluded_keys, generated_field_keys)
+            self._handle_columns(
+                mapper, type_, excluded_keys, generated_field_keys)
             relationship: RelationshipProperty
             for key, relationship in mapper.relationships.items():
                 if (
@@ -805,7 +837,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            types.MethodType(func, type_),  # type: ignore[arg-type]
+                            # type: ignore[arg-type]
+                            types.MethodType(func, type_),
                         )
 
                     # Adjust types that inherit from other types/interfaces that implement Node
@@ -818,7 +851,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            types.MethodType(cast(classmethod, meth).__func__, type_),
+                            types.MethodType(
+                                cast(classmethod, meth).__func__, type_),
                         )
 
             # need to make fields that are already in the type
@@ -846,7 +880,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     model=model,
                 ),
             )
-            setattr(mapped_type, _GENERATED_FIELD_KEYS_KEY, generated_field_keys)
+            setattr(mapped_type, _GENERATED_FIELD_KEYS_KEY,
+                    generated_field_keys)
             setattr(mapped_type, _ORIGINAL_TYPE_KEY, type_)
             return mapped_type
 
@@ -886,14 +921,16 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             self.edge_types.values(),
             self.connection_types.values(),
         ):
-            strawberry_definition = get_object_definition(mapped_type, strict=True)
+            strawberry_definition = get_object_definition(
+                mapped_type, strict=True)
             for f in strawberry_definition.fields:
                 if f.name in getattr(mapped_type, _GENERATED_FIELD_KEYS_KEY):
                     namespace = {}
                     if hasattr(mapped_type, _ORIGINAL_TYPE_KEY):
                         namespace.update(
                             sys.modules[
-                                getattr(mapped_type, _ORIGINAL_TYPE_KEY).__module__
+                                getattr(mapped_type,
+                                        _ORIGINAL_TYPE_KEY).__module__
                             ].__dict__
                         )
                     namespace.update(self.mapped_types)
@@ -924,7 +961,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 if type_name not in self.mapped_interfaces:
                     unmapped_interface_models.add(model)
             for model in unmapped_models:
-                self.type(model)(type(self.model_to_type_name(model), (object,), {}))
+                self.type(model)(
+                    type(self.model_to_type_name(model), (object,), {}))
             for model in unmapped_interface_models:
                 self.interface(model)(
                     type(self.model_to_interface_name(model), (object,), {})

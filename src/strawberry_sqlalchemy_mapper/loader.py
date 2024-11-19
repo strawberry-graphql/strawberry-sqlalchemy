@@ -63,25 +63,57 @@ class StrawberrySQLAlchemyLoader:
             related_model = relationship.entity.entity
 
             async def load_fn(keys: List[Tuple]) -> List[Any]:
-                query = select(related_model).filter(
-                    tuple_(
-                        *[remote for _, remote in relationship.local_remote_pairs or []]
-                    ).in_(keys)
-                )
+                if relationship.secondary is None:
+                    query = select(related_model).filter(
+                        tuple_(
+                            *[remote for _, remote in relationship.local_remote_pairs or []]
+                        ).in_(keys)
+                    )
+                else:
+                    # Use another query when relationship uses a secondary table
+                    # *[remote[1] for remote in relationship.local_remote_pairs or []]
+                    # breakpoint()
+                    # remote_to_use = relationship.local_remote_pairs[0][1]
+                    # keys = tuple([item[0] for item in keys])
+                    query = (
+                        select(related_model)
+                        .join(relationship.secondary, relationship.secondaryjoin)
+                        .filter(
+                            # emote_to_use.in_(keys)
+                            tuple_(
+                                *[remote[1] for remote in relationship.local_remote_pairs or []]
+                            ).in_(keys)
+                        )
+                    )
+
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
                 rows = await self._scalars_all(query)
 
                 def group_by_remote_key(row: Any) -> Tuple:
-                    return tuple(
-                        [
-                            getattr(row, remote.key)
-                            for _, remote in relationship.local_remote_pairs or []
-                            if remote.key
-                        ]
-                    )
+                    if relationship.secondary is None:
+                        return tuple(
+                            [
+                                getattr(row, remote.key)
+                                for _, remote in relationship.local_remote_pairs or []
+                                if remote.key
+                            ]
+                        )
+                    else:
+                        # Use another query when relationship uses a secondary table
+                        # breakpoint()
+                        related_model_table = relationship.entity.entity.__table__
+                        # breakpoint()
+                        return tuple(
+                            [
+                                getattr(row, remote[0].key)
+                                for remote in relationship.local_remote_pairs or []
+                                if remote[0].key is not None and remote[0].table == related_model_table
+                            ]
+                        )
 
                 grouped_keys: Mapping[Tuple, List[Any]] = defaultdict(list)
+                # breakpoint()
                 for row in rows:
                     grouped_keys[group_by_remote_key(row)].append(row)
                 if relationship.uselist:
