@@ -799,6 +799,7 @@ def secondary_tables(base):
     return Employee, Department
 
 
+@pytest.mark.asyncio
 async def test_query_with_secondary_table(
     secondary_tables,
     base,
@@ -869,7 +870,6 @@ async def test_query_with_secondary_table(
             )
         })
         assert result.errors is None
-        # breakpoint()
         assert result.data == {
             'employees': {
                 'edges': [
@@ -920,6 +920,7 @@ async def test_query_with_secondary_table(
         }
 
 
+@pytest.mark.asyncio
 async def test_query_with_secondary_table_without_list_connection(
     secondary_tables,
     base,
@@ -992,12 +993,12 @@ async def test_query_with_secondary_table_without_list_connection(
         assert result.errors is None
         # breakpoint()
         assert result.data == {
-                'employees': [
-                    {
-                        'id': 1,
-                        'name': 'John',
-                        'role': 'Developer',
-                        'department': {
+            'employees': [
+                {
+                    'id': 1,
+                    'name': 'John',
+                    'role': 'Developer',
+                    'department': {
                             'edges': [
                                 {
                                     'node': {
@@ -1011,28 +1012,29 @@ async def test_query_with_secondary_table_without_list_connection(
                                     }
                                 }
                             ]
-                        }
-                    },
-                    {
-                        'id': 2,
-                        'name': 'Bill',
-                        'role': 'Doctor',
-                        'department': {
-                            'edges': []
-                        }
-                    },
-                    {
-                        'id': 3,
-                        'name': 'Maria',
-                        'role': 'Teacher',
-                        'department': {
-                            'edges': []
-                        }
                     }
-                ]
-            }
+                },
+                {
+                    'id': 2,
+                    'name': 'Bill',
+                    'role': 'Doctor',
+                    'department': {
+                            'edges': []
+                    }
+                },
+                {
+                    'id': 3,
+                    'name': 'Maria',
+                    'role': 'Teacher',
+                    'department': {
+                            'edges': []
+                    }
+                }
+            ]
+        }
 
 
+@pytest.mark.asyncio
 async def test_query_with_secondary_table_with_values_with_different_ids(
     secondary_tables,
     base,
@@ -1107,14 +1109,14 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
             )
         })
         assert result.errors is None
-        # breakpoint()
+        breakpoint()
         assert result.data == {
-                'employees': [
-                    {
-                        'id': 1,
-                        'name': 'John',
-                        'role': 'Developer',
-                        'department': {
+            'employees': [
+                {
+                    'id': 1,
+                    'name': 'John',
+                    'role': 'Developer',
+                    'department': {
                             'edges': [
                                 {
                                     'node': {
@@ -1128,31 +1130,31 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
                                     }
                                 }
                             ]
-                        }
-                    },
-                    {
-                        'id': 2,
-                        'name': 'Bill',
-                        'role': 'Doctor',
-                        'department': {
-                            'edges': []
-                        }
-                    },
-                    {
-                        'id': 3,
-                        'name': 'Maria',
-                        'role': 'Teacher',
-                        'department': {
-                            'edges': []
-                        }
                     }
-                ]
-            }
-
-
+                },
+                {
+                    'id': 2,
+                    'name': 'Bill',
+                    'role': 'Doctor',
+                    'department': {
+                            'edges': []
+                    }
+                },
+                {
+                    'id': 3,
+                    'name': 'Maria',
+                    'role': 'Teacher',
+                    'department': {
+                            'edges': []
+                    }
+                }
+            ]
+        }
 
 
 # TODO
 # test with different ids
+# test with foreinkey different than id
 # add a test on Loader to see
-# Add test with query by secondary id
+# Add test with query by secondary id]
+# try syncronous
