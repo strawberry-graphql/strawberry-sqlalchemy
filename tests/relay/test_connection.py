@@ -1109,52 +1109,68 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
             )
         })
         assert result.errors is None
-        breakpoint()
         assert result.data == {
             'employees': [
+                {
+                    'id': 5,
+                    'name': 'Bill',
+                    'role': 'Doctor',
+                    'department': {
+                        'edges': [
+                            {
+                                'node': {
+                                    'id': 10,
+                                    'name': 'Department Test 1',
+                                    'employees': {
+                                        'id': 5,
+                                        'name': 'Bill',
+                                        'role': 'Doctor'
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
                 {
                     'id': 1,
                     'name': 'John',
                     'role': 'Developer',
                     'department': {
-                            'edges': [
-                                {
-                                    'node': {
+                        'edges': [
+                            {
+                                'node': {
+                                    'id': 3,
+                                    'name': 'Department Test 2',
+                                    'employees': {
                                         'id': 1,
-                                        'name': 'Department Test',
-                                        'employees': {
-                                            'id': 1,
-                                            'name': 'John',
-                                            'role': 'Developer'
-                                        }
+                                        'name': 'John',
+                                        'role': 'Developer'
                                     }
                                 }
-                            ]
+                            }
+                        ]
                     }
                 },
                 {
-                    'id': 2,
-                    'name': 'Bill',
-                    'role': 'Doctor',
-                    'department': {
-                            'edges': []
-                    }
-                },
-                {
-                    'id': 3,
+                    'id': 4,
                     'name': 'Maria',
                     'role': 'Teacher',
                     'department': {
-                            'edges': []
+                        'edges': []
                     }
                 }
             ]
         }
 
+            
+
 
 # TODO
-# test with different ids
+# test with different ids # TESTED
+# test with different ids and more than 1 value (use a employee with more than 2 departments)
 # test with foreinkey different than id
-# add a test on Loader to see
-# Add test with query by secondary id]
+# Add test with query by secondary id (use Department - Employee)
+# Test with secondaryu table with more than 1 model
 # try syncronous
+
+# add a test on Loader to see
