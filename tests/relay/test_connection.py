@@ -793,6 +793,746 @@ def secondary_tables(base):
             "Employee",
             secondary="employee_department_join_table",
             back_populates="department",
+        )
+
+    return Employee, Department
+
+
+@pytest.mark.asyncio
+async def test_query_with_secondary_table_with_values_list_without_list_connection(
+    secondary_tables,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def departments(self) -> List[Department]:
+            async with async_sessionmaker() as session:
+                result = await session.execute(select(DepartmentModel))
+                return result.scalars().all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            departments {
+                id
+                name
+                employees {                  
+                    edges {
+                        node {
+                            id
+                            name
+                            role
+                            department {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                    }
+                                }
+                            }
+                        }
+                    }          
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        department1 = DepartmentModel(id=10, name="Department Test 1")
+        department2 = DepartmentModel(id=3, name="Department Test 2")
+        e1 = EmployeeModel(id=1, name="John", role="Developer")
+        e2 = EmployeeModel(id=5, name="Bill", role="Doctor")
+        e3 = EmployeeModel(id=4, name="Maria", role="Teacher")
+        department1.employees.append(e1)
+        department1.employees.append(e2)
+        department2.employees.append(e3)
+        session.add_all([department1, department2, e1, e2, e3])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        assert result.data == {
+            "departments": [
+                {
+                    "id": 10,
+                    "name": "Department Test 1",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 5,
+                                    "name": "Bill",
+                                    "role": "Doctor",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "node": {
+                                    "id": 1,
+                                    "name": "John",
+                                    "role": "Developer",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": 3,
+                    "name": "Department Test 2",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 4,
+                                    "name": "Maria",
+                                    "role": "Teacher",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 3,
+                                                    "name": "Department Test 2"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+
+# TODO Investigate this test
+@pytest.mark.skip("This test is currently failing because the Query with relay.ListConnection generates two DepartmentConnection, which violates the schema's expectations. After investigation, it appears this issue is related to the Relay implementation rather than the secondary table issue. We'll address this later. Additionally, note that the `result.data` may be incorrect in this test.")
+@pytest.mark.asyncio
+async def test_query_with_secondary_table_with_values_list(
+    secondary_tables,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @strawberry.type
+    class Query:
+        departments: relay.ListConnection[Department] = connection(
+            sessionmaker=async_sessionmaker)
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            departments {
+                edges {
+                    node {
+                        id
+                        name
+                        employees {                  
+                            edges {
+                                node {
+                                    id
+                                    name
+                                    role
+                                    department {
+                                        edges {
+                                            node {
+                                                id
+                                                name
+                                            }
+                                        }
+                                    }
+                                }
+                            }          
+                        }
+                    }
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        department1 = DepartmentModel(id=10, name="Department Test 1")
+        department2 = DepartmentModel(id=3, name="Department Test 2")
+        e1 = EmployeeModel(id=1, name="John", role="Developer")
+        e2 = EmployeeModel(id=5, name="Bill", role="Doctor")
+        e3 = EmployeeModel(id=4, name="Maria", role="Teacher")
+        department1.employees.append(e1)
+        department1.employees.append(e2)
+        department2.employees.append(e3)
+        session.add_all([department1, department2, e1, e2, e3])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        assert result.data == {
+            "departments": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": 10,
+                            "name": "Department Test 1",
+                            "employees": {
+                                "edges": [
+                                    {
+                                        "node": {
+                                            "id": 5,
+                                            "name": "Bill",
+                                            "role": "Doctor",
+                                            "department": {
+                                                "edges": [
+                                                    {
+                                                        "node": {
+                                                            "id": 10,
+                                                            "name": "Department Test 1"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "node": {
+                                            "id": 1,
+                                            "name": "John",
+                                            "role": "Developer",
+                                            "department": {
+                                                "edges": [
+                                                    {
+                                                        "node": {
+                                                            "id": 10,
+                                                            "name": "Department Test 1"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "node": {
+                            "id": 3,
+                            "name": "Department Test 2",
+                            "employees": {
+                                "edges": [
+                                    {
+                                        "node": {
+                                            "id": 4,
+                                            "name": "Maria",
+                                            "role": "Teacher",
+                                            "department": {
+                                                "edges": [
+                                                    {
+                                                        "node": {
+                                                            "id": 3,
+                                                            "name": "Department Test 2"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+
+
+@pytest.fixture
+def secondary_tables_with_another_foreign_key(base):
+    EmployeeDepartmentJoinTable = Table(
+        "employee_department_join_table",
+        base.metadata,
+        Column("employee_name", ForeignKey("employee.name"), primary_key=True),
+        Column("department_name", ForeignKey(
+            "department.name"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = Column(Integer, autoincrement=True)
+        name = Column(String, nullable=False, primary_key=True)
+        role = Column(String, nullable=False)
+        department = relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = Column(Integer, autoincrement=True)
+        name = Column(String, nullable=False, primary_key=True)
+        employees = relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+        )
+
+    return Employee, Department
+
+
+@pytest.mark.asyncio
+async def test_query_with_secondary_table_with_values_list_with_foreign_key_different_than_id(
+    secondary_tables_with_another_foreign_key,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel = secondary_tables_with_another_foreign_key
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def departments(self) -> List[Department]:
+            async with async_sessionmaker() as session:
+                result = await session.execute(select(DepartmentModel))
+                return result.scalars().all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            departments {
+                id
+                name
+                employees {                  
+                    edges {
+                        node {
+                            id
+                            name
+                            role
+                            department {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                    }
+                                }
+                            }
+                        }
+                    }          
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        department1 = DepartmentModel(id=10, name="Department Test 1")
+        department2 = DepartmentModel(id=3, name="Department Test 2")
+        e1 = EmployeeModel(id=1, name="John", role="Developer")
+        e2 = EmployeeModel(id=5, name="Bill", role="Doctor")
+        e3 = EmployeeModel(id=4, name="Maria", role="Teacher")
+        department1.employees.append(e1)
+        department1.employees.append(e2)
+        department2.employees.append(e3)
+        session.add_all([department1, department2, e1, e2, e3])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        assert result.data == {
+            "departments": [
+                {
+                    "id": 10,
+                    "name": "Department Test 1",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 5,
+                                    "name": "Bill",
+                                    "role": "Doctor",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "node": {
+                                    "id": 1,
+                                    "name": "John",
+                                    "role": "Developer",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": 3,
+                    "name": "Department Test 2",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 4,
+                                    "name": "Maria",
+                                    "role": "Teacher",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 3,
+                                                    "name": "Department Test 2"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+
+@pytest.fixture
+def secondary_tables_with_more_secondary_tables(base):
+    EmployeeDepartmentJoinTable = Table(
+        "employee_department_join_table",
+        base.metadata,
+        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
+        Column("department_id", ForeignKey("department.id"), primary_key=True),
+    )
+
+    EmployeeBuildingJoinTable = Table(
+        "employee_building_join_table",
+        base.metadata,
+        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
+        Column("building_id", ForeignKey("building.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        role = Column(String, nullable=False)
+        department = relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+        building = relationship(
+            "Building",
+            secondary="employee_building_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        employees = relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+        )
+
+    class Building(base):
+        __tablename__ = "building"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        employees = relationship(
+            "Employee",
+            secondary="employee_building_join_table",
+            back_populates="building",
+        )
+
+    return Employee, Department, Building
+
+
+@pytest.mark.asyncio
+async def test_query_with_secondary_tables_with_more_than_2_colluns_values_list(
+    secondary_tables_with_more_secondary_tables,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_more_secondary_tables
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building():
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def departments(self) -> List[Department]:
+            async with async_sessionmaker() as session:
+                result = await session.execute(select(DepartmentModel))
+                return result.scalars().all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            departments {
+                id
+                name
+                employees {                  
+                    edges {
+                        node {
+                            id
+                            name
+                            role
+                            department {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                    }
+                                }
+                            }
+                        }
+                    }          
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        building = BuildingModel(id=2, name="Building 1")
+        department1 = DepartmentModel(id=10, name="Department Test 1")
+        department2 = DepartmentModel(id=3, name="Department Test 2")
+        e1 = EmployeeModel(id=1, name="John", role="Developer")
+        e2 = EmployeeModel(id=5, name="Bill", role="Doctor")
+        e3 = EmployeeModel(id=4, name="Maria", role="Teacher")
+        department1.employees.append(e1)
+        department1.employees.append(e2)
+        department2.employees.append(e3)
+        building.employees.append(e1)
+        building.employees.append(e2)
+        building.employees.append(e3)
+        session.add_all([department1, department2, e1, e2, e3, building])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        assert result.data == {
+            "departments": [
+                {
+                    "id": 10,
+                    "name": "Department Test 1",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 5,
+                                    "name": "Bill",
+                                    "role": "Doctor",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "node": {
+                                    "id": 1,
+                                    "name": "John",
+                                    "role": "Developer",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": 3,
+                    "name": "Department Test 2",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 4,
+                                    "name": "Maria",
+                                    "role": "Teacher",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 3,
+                                                    "name": "Department Test 2"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+
+@pytest.fixture
+def secondary_tables_with_use_list_false(base):
+    EmployeeDepartmentJoinTable = Table(
+        "employee_department_join_table",
+        base.metadata,
+        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
+        Column("department_id", ForeignKey(
+            "department.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        role = Column(String, nullable=False)
+        department = relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        employees = relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
             uselist=False
         )
 
@@ -801,7 +1541,7 @@ def secondary_tables(base):
 
 @pytest.mark.asyncio
 async def test_query_with_secondary_table(
-    secondary_tables,
+    secondary_tables_with_use_list_false,
     base,
     async_engine,
     async_sessionmaker
@@ -809,7 +1549,7 @@ async def test_query_with_secondary_table(
     async with async_engine.begin() as conn:
         await conn.run_sync(base.metadata.create_all)
     mapper = StrawberrySQLAlchemyMapper()
-    EmployeeModel, DepartmentModel = secondary_tables
+    EmployeeModel, DepartmentModel = secondary_tables_with_use_list_false
 
     @mapper.type(DepartmentModel)
     class Department():
@@ -922,7 +1662,7 @@ async def test_query_with_secondary_table(
 
 @pytest.mark.asyncio
 async def test_query_with_secondary_table_without_list_connection(
-    secondary_tables,
+    secondary_tables_with_use_list_false,
     base,
     async_engine,
     async_sessionmaker
@@ -931,7 +1671,7 @@ async def test_query_with_secondary_table_without_list_connection(
         await conn.run_sync(base.metadata.create_all)
 
     mapper = StrawberrySQLAlchemyMapper()
-    EmployeeModel, DepartmentModel = secondary_tables
+    EmployeeModel, DepartmentModel = secondary_tables_with_use_list_false
 
     @mapper.type(DepartmentModel)
     class Department():
@@ -991,7 +1731,6 @@ async def test_query_with_secondary_table_without_list_connection(
             )
         })
         assert result.errors is None
-        # breakpoint()
         assert result.data == {
             'employees': [
                 {
@@ -1036,7 +1775,7 @@ async def test_query_with_secondary_table_without_list_connection(
 
 @pytest.mark.asyncio
 async def test_query_with_secondary_table_with_values_with_different_ids(
-    secondary_tables,
+    secondary_tables_with_use_list_false,
     base,
     async_engine,
     async_sessionmaker
@@ -1047,7 +1786,7 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
         await conn.run_sync(base.metadata.create_all)
 
     mapper = StrawberrySQLAlchemyMapper()
-    EmployeeModel, DepartmentModel = secondary_tables
+    EmployeeModel, DepartmentModel = secondary_tables_with_use_list_false
 
     @mapper.type(DepartmentModel)
     class Department():
@@ -1161,16 +1900,3 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
                 }
             ]
         }
-
-            
-
-
-# TODO
-# test with different ids # TESTED
-# test with different ids and more than 1 value (use a employee with more than 2 departments)
-# test with foreinkey different than id
-# Add test with query by secondary id (use Department - Employee)
-# Test with secondaryu table with more than 1 model
-# try syncronous
-
-# add a test on Loader to see

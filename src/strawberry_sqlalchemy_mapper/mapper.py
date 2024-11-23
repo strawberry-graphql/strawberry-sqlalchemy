@@ -517,23 +517,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         ]
                     )
                 else:
-                    # If has a secondary table, gets only the first id since the other id cannot be get without a query
-                    # breakpoint()
-                    local_remote_pairs_secondary_table_local = relationship.local_remote_pairs[0][0]
+                    # If has a secondary table, gets only the first ID as additional IDs require a separate query
+                    local_remote_pairs_secondary_table_local = relationship.local_remote_pairs[
+                        0][0]
                     relationship_key = tuple(
                         [
-                            getattr(self, local_remote_pairs_secondary_table_local.key),
+                            getattr(
+                                self, local_remote_pairs_secondary_table_local.key),
                         ]
                     )
-
-                    # relationship_key = tuple(
-                    #     [
-                    #         getattr(self, local.key)
-                    #         for local, _ in relationship.local_remote_pairs or []
-                    #         if local.key
-                    #     ]
-                    # )
-                    # breakpoint()
 
                 if any(item is None for item in relationship_key):
                     if relationship.uselist:
@@ -544,7 +536,6 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     loader = info.context["sqlalchemy_loader"]
                 else:
                     loader = info.context.sqlalchemy_loader
-                # breakpoint()
                 related_objects = await loader.loader_for(relationship).load(
                     relationship_key
                 )

@@ -81,10 +81,12 @@ class StrawberrySQLAlchemyLoader:
                     related_model_key_label = relationship.local_remote_pairs[1][1].key
 
                     self_model_key = relationship.local_remote_pairs[0][0].key
+                    related_model_key = relationship.local_remote_pairs[1][0].key
 
                     remote_to_use = relationship.local_remote_pairs[0][1]
                     query_keys = tuple([item[0] for item in keys])
 
+                    # This query returns every row equal (self_model.key, related_model)
                     query = (
                         select(
                             label(self_model_key_label, getattr(
@@ -94,12 +96,12 @@ class StrawberrySQLAlchemyLoader:
                         .join(
                             relationship.secondary,
                             getattr(relationship.secondary.c,
-                                    related_model_key_label) == related_model.id
+                                    related_model_key_label) == getattr(related_model, related_model_key)
                         )
                         .join(
                             self_model,
                             getattr(relationship.secondary.c,
-                                    self_model_key_label) == self_model.id
+                                    self_model_key_label) == getattr(self_model, self_model_key)
                         )
                         .filter(
                             remote_to_use.in_(query_keys)
