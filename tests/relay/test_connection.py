@@ -1400,6 +1400,14 @@ async def test_query_with_secondary_tables_with_more_than_2_colluns_values_list(
                                         name
                                     }
                                 }
+                            },
+                            building {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                    }
+                                }
                             }
                         }
                     }          
@@ -1452,6 +1460,16 @@ async def test_query_with_secondary_tables_with_more_than_2_colluns_values_list(
                                                 }
                                             }
                                         ]
+                                    },
+                                    "building": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 2,
+                                                    "name": "Building 1"
+                                                }
+                                            }
+                                        ]
                                     }
                                 }
                             },
@@ -1466,6 +1484,16 @@ async def test_query_with_secondary_tables_with_more_than_2_colluns_values_list(
                                                 "node": {
                                                     "id": 10,
                                                     "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "building": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 2,
+                                                    "name": "Building 1"
                                                 }
                                             }
                                         ]
@@ -1491,6 +1519,16 @@ async def test_query_with_secondary_tables_with_more_than_2_colluns_values_list(
                                                 "node": {
                                                     "id": 3,
                                                     "name": "Department Test 2"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "building": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 2,
+                                                    "name": "Building 1"
                                                 }
                                             }
                                         ]
@@ -1900,3 +1938,229 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
                 }
             ]
         }
+
+
+@pytest.fixture
+def secondary_tables_with_normal_relationship(base):
+    EmployeeDepartmentJoinTable = Table(
+        "employee_department_join_table",
+        base.metadata,
+        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
+        Column("department_id", ForeignKey(
+            "department.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        role = Column(String, nullable=False)
+        department = relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+        building_id = Column(Integer, ForeignKey("building.id"))
+        building = relationship(
+            "Building",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        employees = relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+        )
+
+    class Building(base):
+        __tablename__ = "building"
+        id = Column(Integer, autoincrement=True, primary_key=True)
+        name = Column(String, nullable=False)
+        employees = relationship(
+            "Employee",
+            back_populates="building",
+        )
+
+    return Employee, Department, Building
+
+
+@pytest.mark.asyncio
+async def test_query_with_secondary_table_with_values_list_and_normal_relationship(
+    secondary_tables_with_normal_relationship,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_normal_relationship
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building():
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def departments(self) -> List[Department]:
+            async with async_sessionmaker() as session:
+                result = await session.execute(select(DepartmentModel))
+                return result.scalars().all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            departments {
+                id
+                name
+                employees {                  
+                    edges {
+                        node {
+                            id
+                            name
+                            role
+                            department {
+                                edges {
+                                    node {
+                                        id
+                                        name
+                                    }
+                                }
+                            },
+                            building {
+                                id
+                                name
+                            }
+                        }
+                    }          
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        building = BuildingModel(id=2, name="Building 1")
+        department1 = DepartmentModel(id=10, name="Department Test 1")
+        department2 = DepartmentModel(id=3, name="Department Test 2")
+        e1 = EmployeeModel(id=1, name="John", role="Developer")
+        e2 = EmployeeModel(id=5, name="Bill", role="Doctor")
+        e3 = EmployeeModel(id=4, name="Maria", role="Teacher")
+        department1.employees.append(e1)
+        department1.employees.append(e2)
+        department2.employees.append(e3)
+        building.employees.append(e1)
+        building.employees.append(e2)
+        building.employees.append(e3)
+        session.add_all([department1, department2, e1, e2, e3, building])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        assert result.data == {
+            "departments": [
+                {
+                    "id": 10,
+                    "name": "Department Test 1",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 5,
+                                    "name": "Bill",
+                                    "role": "Doctor",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "building": {
+                                        "id": 2,
+                                        "name": "Building 1"
+                                    }
+                                }
+                            },
+                            {
+                                "node": {
+                                    "id": 1,
+                                    "name": "John",
+                                    "role": "Developer",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 10,
+                                                    "name": "Department Test 1"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "building": {
+                                        "id": 2,
+                                        "name": "Building 1"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": 3,
+                    "name": "Department Test 2",
+                    "employees": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "id": 4,
+                                    "name": "Maria",
+                                    "role": "Teacher",
+                                    "department": {
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "id": 3,
+                                                    "name": "Department Test 2"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "building": {
+                                        "id": 2,
+                                        "name": "Building 1"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+
+# TODO
+# Make test with secondary table and normal relationship at same time
