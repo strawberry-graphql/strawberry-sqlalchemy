@@ -11,6 +11,7 @@ from typing import (
     Tuple,
     Union,
 )
+from strawberry_sqlalchemy_mapper.exc import InvalidLocalRemotePairs
 
 from sqlalchemy import select, tuple_, label
 from sqlalchemy.engine.base import Connection
@@ -77,11 +78,14 @@ class StrawberrySQLAlchemyLoader:
                     # Use another query when relationship uses a secondary table
                     self_model = relationship.parent.entity
 
-                    self_model_key_label = relationship.local_remote_pairs[0][1].key
-                    related_model_key_label = relationship.local_remote_pairs[1][1].key
+                    if not relationship.local_remote_pairs:
+                        raise InvalidLocalRemotePairs(f"{related_model.__name__} -- {self_model.__name__}")
 
-                    self_model_key = relationship.local_remote_pairs[0][0].key
-                    related_model_key = relationship.local_remote_pairs[1][0].key
+                    self_model_key_label = str(relationship.local_remote_pairs[0][1].key)
+                    related_model_key_label = str(relationship.local_remote_pairs[1][1].key)
+
+                    self_model_key = str(relationship.local_remote_pairs[0][0].key)
+                    related_model_key = str(relationship.local_remote_pairs[1][0].key)
 
                     remote_to_use = relationship.local_remote_pairs[0][1]
                     query_keys = tuple([item[0] for item in keys])

@@ -379,3 +379,8 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     }
     '''
     assert str(schema) == textwrap.dedent(expected).strip()
+
+
+# TODO 
+# Add test mapper to secondary tables
+# Check if exception is raised

@@ -179,3 +179,8 @@ async def test_loader_for_secondary(engine, base, sessionmaker, secondary_tables
         )
         departments = await loader.load(key)
         assert {d.name for d in departments} == {"d1", "d2"}
+
+
+# TODO 
+# add secondary tables tests
+# Test exception

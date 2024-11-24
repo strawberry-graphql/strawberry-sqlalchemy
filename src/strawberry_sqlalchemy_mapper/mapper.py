@@ -82,6 +82,7 @@ from strawberry.types.private import is_private
 from strawberry_sqlalchemy_mapper.exc import (
     HybridPropertyNotAnnotated,
     InterfaceModelNotPolymorphic,
+    InvalidLocalRemotePairs,
     UnsupportedAssociationProxyTarget,
     UnsupportedColumnType,
     UnsupportedDescriptorType,
@@ -327,8 +328,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     [
                         ("edges", List[edge_type]),  # type: ignore[valid-type]
                     ],
-                    # type: ignore[valid-type]
-                    bases=(relay.ListConnection[lazy_type],),
+                    bases=(relay.ListConnection[lazy_type],), # type: ignore[valid-type]
                 )
             )
             setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
@@ -518,12 +518,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     )
                 else:
                     # If has a secondary table, gets only the first ID as additional IDs require a separate query
+                    if not relationship.local_remote_pairs:
+                        raise InvalidLocalRemotePairs(f"{relationship.entity.entity.__name__} -- {relationship.parent.entity.__name__}")
+
                     local_remote_pairs_secondary_table_local = relationship.local_remote_pairs[
                         0][0]
                     relationship_key = tuple(
                         [
                             getattr(
-                                self, local_remote_pairs_secondary_table_local.key),
+                                self, str(local_remote_pairs_secondary_table_local.key)),
                         ]
                     )
 
@@ -830,8 +833,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            # type: ignore[arg-type]
-                            types.MethodType(func, type_),
+                            types.MethodType(func, type_), # type: ignore[arg-type]
                         )
 
                     # Adjust types that inherit from other types/interfaces that implement Node
