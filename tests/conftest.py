@@ -111,3 +111,209 @@ def async_sessionmaker(async_engine):
 @pytest.fixture
 def base():
     return orm.declarative_base()
+
+
+@pytest.fixture
+def secondary_tables(base):
+    EmployeeDepartmentJoinTable = sqlalchemy.Table(
+        "employee_department_join_table",
+        base.metadata,
+        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
+        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
+            "department.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+        department = orm.relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+        employees = orm.relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+        )
+
+    return Employee, Department
+
+
+@pytest.fixture
+def secondary_tables_with_another_foreign_key(base):
+    EmployeeDepartmentJoinTable = sqlalchemy.Table(
+        "employee_department_join_table",
+        base.metadata,
+        sqlalchemy.Column("employee_name", sqlalchemy.ForeignKey("employee.name"), primary_key=True),
+        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
+            "department.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False, primary_key=True)
+        role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+        department = orm.relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+        employees = orm.relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+        )
+
+    return Employee, Department
+
+
+@pytest.fixture
+def secondary_tables_with_more_secondary_tables(base):
+    EmployeeDepartmentJoinTable = sqlalchemy.Table(
+        "employee_department_join_table",
+        base.metadata,
+        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
+        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey("department.id"), primary_key=True),
+    )
+
+    EmployeeBuildingJoinTable = sqlalchemy.Table(
+        "employee_building_join_table",
+        base.metadata,
+        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
+        sqlalchemy.Column("building_id", sqlalchemy.ForeignKey("building.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+        department = orm.relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+        building = orm.relationship(
+            "Building",
+            secondary="employee_building_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        employees = orm.relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+        )
+
+    class Building(base):
+        __tablename__ = "building"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        employees = orm.relationship(
+            "Employee",
+            secondary="employee_building_join_table",
+            back_populates="building",
+        )
+
+    return Employee, Department, Building
+
+
+@pytest.fixture
+def secondary_tables_with_use_list_false(base):
+    EmployeeDepartmentJoinTable = sqlalchemy.Table(
+        "employee_department_join_table",
+        base.metadata,
+        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
+        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
+            "department.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+        department = orm.relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        employees = orm.relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+            uselist=False
+        )
+
+    return Employee, Department
+
+
+@pytest.fixture
+def secondary_tables_with_normal_relationship(base):
+    EmployeeDepartmentJoinTable = sqlalchemy.Table(
+        "employee_department_join_table",
+        base.metadata,
+        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
+        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
+            "department.id"), primary_key=True),
+    )
+
+    class Employee(base):
+        __tablename__ = "employee"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+        department = orm.relationship(
+            "Department",
+            secondary="employee_department_join_table",
+            back_populates="employees",
+        )
+        building_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("building.id"))
+        building = orm.relationship(
+            "Building",
+            back_populates="employees",
+        )
+
+    class Department(base):
+        __tablename__ = "department"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        employees = orm.relationship(
+            "Employee",
+            secondary="employee_department_join_table",
+            back_populates="department",
+        )
+
+    class Building(base):
+        __tablename__ = "building"
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+        employees = orm.relationship(
+            "Employee",
+            back_populates="building",
+        )
+
+    return Employee, Department, Building

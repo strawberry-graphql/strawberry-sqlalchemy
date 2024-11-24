@@ -764,40 +764,6 @@ async def test_query_keyset_async(
         }
 
 
-@pytest.fixture
-def secondary_tables(base):
-    EmployeeDepartmentJoinTable = Table(
-        "employee_department_join_table",
-        base.metadata,
-        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
-        Column("department_id", ForeignKey(
-            "department.id"), primary_key=True),
-    )
-
-    class Employee(base):
-        __tablename__ = "employee"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        role = Column(String, nullable=False)
-        department = relationship(
-            "Department",
-            secondary="employee_department_join_table",
-            back_populates="employees",
-        )
-
-    class Department(base):
-        __tablename__ = "department"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        employees = relationship(
-            "Employee",
-            secondary="employee_department_join_table",
-            back_populates="department",
-        )
-
-    return Employee, Department
-
-
 @pytest.mark.asyncio
 async def test_query_with_secondary_table_with_values_list_without_list_connection(
     secondary_tables,
@@ -1107,40 +1073,6 @@ async def test_query_with_secondary_table_with_values_list(
         }
 
 
-@pytest.fixture
-def secondary_tables_with_another_foreign_key(base):
-    EmployeeDepartmentJoinTable = Table(
-        "employee_department_join_table",
-        base.metadata,
-        Column("employee_name", ForeignKey("employee.name"), primary_key=True),
-        Column("department_name", ForeignKey(
-            "department.name"), primary_key=True),
-    )
-
-    class Employee(base):
-        __tablename__ = "employee"
-        id = Column(Integer, autoincrement=True)
-        name = Column(String, nullable=False, primary_key=True)
-        role = Column(String, nullable=False)
-        department = relationship(
-            "Department",
-            secondary="employee_department_join_table",
-            back_populates="employees",
-        )
-
-    class Department(base):
-        __tablename__ = "department"
-        id = Column(Integer, autoincrement=True)
-        name = Column(String, nullable=False, primary_key=True)
-        employees = relationship(
-            "Employee",
-            secondary="employee_department_join_table",
-            back_populates="department",
-        )
-
-    return Employee, Department
-
-
 @pytest.mark.asyncio
 async def test_query_with_secondary_table_with_values_list_with_foreign_key_different_than_id(
     secondary_tables_with_another_foreign_key,
@@ -1289,61 +1221,6 @@ async def test_query_with_secondary_table_with_values_list_with_foreign_key_diff
                 }
             ]
         }
-
-
-@pytest.fixture
-def secondary_tables_with_more_secondary_tables(base):
-    EmployeeDepartmentJoinTable = Table(
-        "employee_department_join_table",
-        base.metadata,
-        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
-        Column("department_id", ForeignKey("department.id"), primary_key=True),
-    )
-
-    EmployeeBuildingJoinTable = Table(
-        "employee_building_join_table",
-        base.metadata,
-        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
-        Column("building_id", ForeignKey("building.id"), primary_key=True),
-    )
-
-    class Employee(base):
-        __tablename__ = "employee"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        role = Column(String, nullable=False)
-        department = relationship(
-            "Department",
-            secondary="employee_department_join_table",
-            back_populates="employees",
-        )
-        building = relationship(
-            "Building",
-            secondary="employee_building_join_table",
-            back_populates="employees",
-        )
-
-    class Department(base):
-        __tablename__ = "department"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        employees = relationship(
-            "Employee",
-            secondary="employee_department_join_table",
-            back_populates="department",
-        )
-
-    class Building(base):
-        __tablename__ = "building"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        employees = relationship(
-            "Employee",
-            secondary="employee_building_join_table",
-            back_populates="building",
-        )
-
-    return Employee, Department, Building
 
 
 @pytest.mark.asyncio
@@ -1540,41 +1417,6 @@ async def test_query_with_secondary_tables_with_more_than_2_colluns_values_list(
                 }
             ]
         }
-
-
-@pytest.fixture
-def secondary_tables_with_use_list_false(base):
-    EmployeeDepartmentJoinTable = Table(
-        "employee_department_join_table",
-        base.metadata,
-        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
-        Column("department_id", ForeignKey(
-            "department.id"), primary_key=True),
-    )
-
-    class Employee(base):
-        __tablename__ = "employee"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        role = Column(String, nullable=False)
-        department = relationship(
-            "Department",
-            secondary="employee_department_join_table",
-            back_populates="employees",
-        )
-
-    class Department(base):
-        __tablename__ = "department"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        employees = relationship(
-            "Employee",
-            secondary="employee_department_join_table",
-            back_populates="department",
-            uselist=False
-        )
-
-    return Employee, Department
 
 
 @pytest.mark.asyncio
@@ -1938,54 +1780,6 @@ async def test_query_with_secondary_table_with_values_with_different_ids(
                 }
             ]
         }
-
-
-@pytest.fixture
-def secondary_tables_with_normal_relationship(base):
-    EmployeeDepartmentJoinTable = Table(
-        "employee_department_join_table",
-        base.metadata,
-        Column("employee_id", ForeignKey("employee.id"), primary_key=True),
-        Column("department_id", ForeignKey(
-            "department.id"), primary_key=True),
-    )
-
-    class Employee(base):
-        __tablename__ = "employee"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        role = Column(String, nullable=False)
-        department = relationship(
-            "Department",
-            secondary="employee_department_join_table",
-            back_populates="employees",
-        )
-        building_id = Column(Integer, ForeignKey("building.id"))
-        building = relationship(
-            "Building",
-            back_populates="employees",
-        )
-
-    class Department(base):
-        __tablename__ = "department"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        employees = relationship(
-            "Employee",
-            secondary="employee_department_join_table",
-            back_populates="department",
-        )
-
-    class Building(base):
-        __tablename__ = "building"
-        id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        employees = relationship(
-            "Employee",
-            back_populates="building",
-        )
-
-    return Employee, Department, Building
 
 
 @pytest.mark.asyncio
