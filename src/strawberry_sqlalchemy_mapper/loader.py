@@ -20,12 +20,6 @@ from sqlalchemy.orm import RelationshipProperty, Session
 from strawberry.dataloader import DataLoader
 
 
-# import label from sqlalchemy if sqlalchemy version is equal 2
-# SQLA_VERSION = version.parse(sqlalchemy.__version__)
-# SQLA2 = SQLA_VERSION >= version.parse("2.0")
-# if SQLA2:
-#     from sqlalchemy import label
-
 class StrawberrySQLAlchemyLoader:
     """
     Creates DataLoader instances on-the-fly for SQLAlchemy relationships
@@ -99,8 +93,6 @@ class StrawberrySQLAlchemyLoader:
                     # This query returns every row equal (self_model.key, related_model)
                     query = (
                         select(
-                            # label(self_model_key_label, getattr(
-                            #    self_model, self_model_key)),
                             getattr(self_model, self_model_key).label(self_model_key_label),
                             related_model
                         )
