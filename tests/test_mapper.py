@@ -381,6 +381,225 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
+@pytest.fixture
+def expected_schema_from_secondary_tables():
+    return '''
+    type Department {
+      id: Int!
+      name: String
+      employees: EmployeeConnection!
+    }
+
+    type DepartmentConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [DepartmentEdge!]!
+    }
+
+    type DepartmentEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Department!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      role: String
+      department: DepartmentConnection!
+    }
+
+    type EmployeeConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [EmployeeEdge!]!
+    }
+
+    type EmployeeEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Employee!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: [Department!]!
+    }
+    '''
+    
+
+def test_relationships_schema_with_secondary_tables(secondary_tables, mapper, expected_schema_from_secondary_tables):
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        __exclude__ = ["password_hash"]
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables).strip()
+
+
+def test_relationships_schema_with_secondary_tables_with_another_foreign_key(secondary_tables_with_another_foreign_key, mapper, expected_schema_from_secondary_tables):
+    EmployeeModel, DepartmentModel = secondary_tables_with_another_foreign_key
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        __exclude__ = ["password_hash"]
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables).strip()
+
+
+def test_relationships_schema_with_secondary_tables_with_more_secondary_tables(secondary_tables_with_more_secondary_tables, mapper):
+    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_more_secondary_tables
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        __exclude__ = ["password_hash"]
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+    
+    expected = '''
+    type Building {
+      id: Int!
+      name: String!
+      employees: EmployeeConnection!
+    }
+
+    type BuildingConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [BuildingEdge!]!
+    }
+
+    type BuildingEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Building!
+    }
+
+    type Department {
+      id: Int!
+      name: String!
+      employees: EmployeeConnection!
+    }
+
+    type DepartmentConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [DepartmentEdge!]!
+    }
+
+    type DepartmentEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Department!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      role: String
+      department: DepartmentConnection!
+      building: BuildingConnection!
+    }
+
+    type EmployeeConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [EmployeeEdge!]!
+    }
+
+    type EmployeeEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Employee!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: [Department!]!
+    }
+    '''
+    assert str(schema) == textwrap.dedent(expected).strip()
+
+
 # TODO 
 # Add test mapper to secondary tables
+    # secondary_tables_with_use_list_false
+    # secondary_tables_with_normal_relationship
 # Check if exception is raised

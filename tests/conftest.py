@@ -159,7 +159,7 @@ def secondary_tables_with_another_foreign_key(base):
 
     class Employee(base):
         __tablename__ = "employee"
-        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True)
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, nullable=False)
         name = sqlalchemy.Column(sqlalchemy.String, nullable=False, primary_key=True)
         role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
         department = orm.relationship(
@@ -317,3 +317,6 @@ def secondary_tables_with_normal_relationship(base):
         )
 
     return Employee, Department, Building
+
+
+# TODO refactor

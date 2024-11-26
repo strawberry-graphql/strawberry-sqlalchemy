@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader
+from strawberry_sqlalchemy_mapper.exc import InvalidLocalRemotePairs
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -153,8 +154,8 @@ async def test_loader_for_secondary_tables_with_another_foreign_key(engine, base
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1 = Employee(name="e1")
-        e2 = Employee(name="e2")
+        e1 = Employee(name="e1", id=1)
+        e2 = Employee(name="e2", id=2)
         d1 = Department(name="d1")
         d2 = Department(name="d2")
         d3 = Department(name="d3")
@@ -282,5 +283,21 @@ async def test_loader_for_secondary_tables_with_normal_relationship(engine, base
         assert {d.name for d in departments} == {"d1", "d2"}
 
 
-# TODO 
-# Test exception
+@pytest.mark.asyncio
+async def test_loader_for_secondary_tables_should_raise_exception_if_relationship_doesnot_has_local_remote_pairs(engine, base, sessionmaker, secondary_tables_with_normal_relationship):
+    Employee, Department, Building = secondary_tables_with_normal_relationship
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+
+        Employee.department.property.local_remote_pairs = []
+        loader = base_loader.loader_for(Employee.department.property)
+        
+        with pytest.raises(expected_exception=InvalidLocalRemotePairs):
+            await loader.load((1,))
+
+        
+
+
+# TODO refactor
