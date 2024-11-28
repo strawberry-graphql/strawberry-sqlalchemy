@@ -284,7 +284,7 @@ async def test_loader_for_secondary_tables_with_normal_relationship(engine, base
 
 
 @pytest.mark.asyncio
-async def test_loader_for_secondary_tables_should_raise_exception_if_relationship_doesnot_has_local_remote_pairs(engine, base, sessionmaker, secondary_tables_with_normal_relationship):
+async def test_loader_for_secondary_tables_should_raise_exception_if_relationship_dont_has_local_remote_pairs(engine, base, sessionmaker, secondary_tables_with_normal_relationship):
     Employee, Department, Building = secondary_tables_with_normal_relationship
     base.metadata.create_all(engine)
 

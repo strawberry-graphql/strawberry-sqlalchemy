@@ -451,7 +451,7 @@ def test_relationships_schema_with_secondary_tables(secondary_tables, mapper, ex
 
     @mapper.type(EmployeeModel)
     class Employee:
-        __exclude__ = ["password_hash"]
+        pass
 
     @mapper.type(DepartmentModel)
     class Department:
@@ -473,7 +473,7 @@ def test_relationships_schema_with_secondary_tables_with_another_foreign_key(sec
 
     @mapper.type(EmployeeModel)
     class Employee:
-        __exclude__ = ["password_hash"]
+        pass
 
     @mapper.type(DepartmentModel)
     class Department:
@@ -495,7 +495,7 @@ def test_relationships_schema_with_secondary_tables_with_more_secondary_tables(s
 
     @mapper.type(EmployeeModel)
     class Employee:
-        __exclude__ = ["password_hash"]
+        pass
 
     @mapper.type(DepartmentModel)
     class Department:
@@ -598,8 +598,173 @@ def test_relationships_schema_with_secondary_tables_with_more_secondary_tables(s
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
+def test_relationships_schema_with_secondary_tables_with_use_list_false(secondary_tables_with_use_list_false, mapper):
+    EmployeeModel, DepartmentModel = secondary_tables_with_use_list_false
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+    
+    expected = '''
+    type Department {
+      id: Int!
+      name: String!
+      employees: Employee
+    }
+
+    type DepartmentConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [DepartmentEdge!]!
+    }
+
+    type DepartmentEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Department!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      role: String
+      department: DepartmentConnection!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: [Department!]!
+    }
+    '''
+
+    assert str(schema) == textwrap.dedent(expected).strip()
+
+
+def test_relationships_schema_with_secondary_tables_with_normal_relationship(secondary_tables_with_normal_relationship, mapper):
+    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_normal_relationship
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building():
+        pass
+
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+    
+    expected = '''
+    type Building {
+      id: Int!
+      name: String!
+      employees: EmployeeConnection!
+    }
+
+    type Department {
+      id: Int!
+      name: String!
+      employees: EmployeeConnection!
+    }
+
+    type DepartmentConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [DepartmentEdge!]!
+    }
+
+    type DepartmentEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Department!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      role: String
+      buildingId: Int
+      department: DepartmentConnection!
+      building: Building
+    }
+
+    type EmployeeConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [EmployeeEdge!]!
+    }
+
+    type EmployeeEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Employee!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: [Department!]!
+    }
+    '''
+
+    assert str(schema) == textwrap.dedent(expected).strip()
+
+
 # TODO 
-# Add test mapper to secondary tables
-    # secondary_tables_with_use_list_false
-    # secondary_tables_with_normal_relationship
-# Check if exception is raised
+# refactor
