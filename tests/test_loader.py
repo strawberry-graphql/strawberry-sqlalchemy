@@ -115,23 +115,28 @@ async def test_loader_with_async_session(
     assert {e.name for e in employees} == {"e1"}
 
 
+def create_default_data_on_secondary_table_tests(session, Employee, Department):
+    e1 = Employee(name="e1", id=1)
+    e2 = Employee(name="e2", id=2)
+    d1 = Department(name="d1")
+    d2 = Department(name="d2")
+    d3 = Department(name="d3")
+    session.add_all([e1, e2, d1, d2, d3])
+    session.flush()
+
+    e1.department.append(d1)
+    e1.department.append(d2)
+    e2.department.append(d2)
+    return e1, e2, d1, d2, d3
+
+
 @pytest.mark.asyncio
 async def test_loader_for_secondary_table(engine, base, sessionmaker, secondary_tables):
     Employee, Department = secondary_tables
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1 = Employee(name="e1")
-        e2 = Employee(name="e2")
-        d1 = Department(name="d1")
-        d2 = Department(name="d2")
-        d3 = Department(name="d3")
-        session.add_all([e1, e2, d1, d2, d3])
-        session.flush()
-
-        e1.department.append(d1)
-        e1.department.append(d2)
-        e2.department.append(d2)
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -154,17 +159,7 @@ async def test_loader_for_secondary_tables_with_another_foreign_key(engine, base
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1 = Employee(name="e1", id=1)
-        e2 = Employee(name="e2", id=2)
-        d1 = Department(name="d1")
-        d2 = Department(name="d2")
-        d3 = Department(name="d3")
-        session.add_all([e1, e2, d1, d2, d3])
-        session.flush()
-
-        e1.department.append(d1)
-        e1.department.append(d2)
-        e2.department.append(d2)
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -187,20 +182,12 @@ async def test_loader_for_secondary_tables_with_more_secondary_tables(engine, ba
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1 = Employee(name="e1")
-        e2 = Employee(name="e2")
-        d1 = Department(name="d1")
-        d2 = Department(name="d2")
-        d3 = Department(name="d3")
+        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
+        
         b1 = Building(id=2, name="Building 1")
-        session.add_all([e1, e2, d1, d2, d3, b1])
-        session.flush()
-
-        e1.department.append(d1)
-        e1.department.append(d2)
-        e2.department.append(d2)
         b1.employees.append(e1)
         b1.employees.append(e2)
+        session.add(b1)
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -223,14 +210,7 @@ async def test_loader_for_secondary_tables_with_use_list_false(engine, base, ses
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1 = Employee(name="e1")
-        e2 = Employee(name="e2")
-        d1 = Department(name="d1")
-        d2 = Department(name="d2")
-        session.add_all([e1, e2, d1, d2])
-        session.flush()
-
-        e1.department.append(d1)
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -253,20 +233,12 @@ async def test_loader_for_secondary_tables_with_normal_relationship(engine, base
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1 = Employee(name="e1")
-        e2 = Employee(name="e2")
-        d1 = Department(name="d1")
-        d2 = Department(name="d2")
-        d3 = Department(name="d3")
-        b1 = Building(id=2, name="Building 1")
-        session.add_all([e1, e2, d1, d2, d3, b1])
-        session.flush()
+        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
 
-        e1.department.append(d1)
-        e1.department.append(d2)
-        e2.department.append(d2)
+        b1 = Building(id=2, name="Building 1")
         b1.employees.append(e1)
         b1.employees.append(e2)
+        session.add(b1)
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -296,8 +268,3 @@ async def test_loader_for_secondary_tables_should_raise_exception_if_relationshi
         
         with pytest.raises(expected_exception=InvalidLocalRemotePairs):
             await loader.load((1,))
-
-        
-
-
-# TODO refactor
