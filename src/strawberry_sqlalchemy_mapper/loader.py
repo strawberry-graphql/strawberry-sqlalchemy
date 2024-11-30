@@ -11,6 +11,7 @@ from typing import (
     Tuple,
     Union,
 )
+from strawberry_sqlalchemy_mapper.exc import InvalidLocalRemotePairs
 
 from sqlalchemy import select, tuple_
 from sqlalchemy.engine.base import Connection
@@ -45,12 +46,16 @@ class StrawberrySQLAlchemyLoader:
                 "One of bind or async_bind_factory must be set for loader to function properly."
             )
 
-    async def _scalars_all(self, *args, **kwargs):
+    async def _scalars_all(self, *args, disabled_optimization_to_secondary_tables=False, **kwargs):
         if self._async_bind_factory:
             async with self._async_bind_factory() as bind:
+                if disabled_optimization_to_secondary_tables is True:
+                    return (await bind.execute(*args, **kwargs)).all()
                 return (await bind.scalars(*args, **kwargs)).all()
         else:
             assert self._bind is not None
+            if disabled_optimization_to_secondary_tables is True:
+                return self._bind.execute(*args, **kwargs).all()
             return self._bind.scalars(*args, **kwargs).all()
 
     def loader_for(self, relationship: RelationshipProperty) -> DataLoader:
@@ -63,14 +68,69 @@ class StrawberrySQLAlchemyLoader:
             related_model = relationship.entity.entity
 
             async def load_fn(keys: List[Tuple]) -> List[Any]:
-                query = select(related_model).filter(
-                    tuple_(
-                        *[remote for _, remote in relationship.local_remote_pairs or []]
-                    ).in_(keys)
-                )
+                def _build_normal_relationship_query(related_model, relationship, keys):
+                    return select(related_model).filter(
+                        tuple_(
+                            *[remote for _, remote in relationship.local_remote_pairs or []]
+                        ).in_(keys)
+                    )
+                
+                def _build_relationship_with_secondary_table_query(related_model, relationship, keys):
+                    # Use another query when relationship uses a secondary table
+                    self_model = relationship.parent.entity
+
+                    if not relationship.local_remote_pairs:
+                        raise InvalidLocalRemotePairs(
+                            f"{related_model.__name__} -- {self_model.__name__}")
+
+                    self_model_key_label = str(
+                        relationship.local_remote_pairs[0][1].key)
+                    related_model_key_label = str(
+                        relationship.local_remote_pairs[1][1].key)
+
+                    self_model_key = str(
+                        relationship.local_remote_pairs[0][0].key)
+                    related_model_key = str(
+                        relationship.local_remote_pairs[1][0].key)
+
+                    remote_to_use = relationship.local_remote_pairs[0][1]
+                    query_keys = tuple([item[0] for item in keys])
+
+                    # This query returns rows in this format -> (self_model.key, related_model)
+                    return (
+                        select(
+                            getattr(self_model, self_model_key).label(
+                                self_model_key_label),
+                            related_model
+                        )
+                        .join(
+                            relationship.secondary,
+                            getattr(relationship.secondary.c,
+                                    related_model_key_label) == getattr(related_model, related_model_key)
+                        )
+                        .join(
+                            self_model,
+                            getattr(relationship.secondary.c,
+                                    self_model_key_label) == getattr(self_model, self_model_key)
+                        )
+                        .filter(
+                            remote_to_use.in_(query_keys)
+                        )
+                    )
+
+                def _build_query(*args):
+                    return _build_normal_relationship_query(*args) if relationship.secondary is None else _build_relationship_with_secondary_table_query(*args)
+
+                query = _build_query(related_model, relationship, keys) 
+
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
-                rows = await self._scalars_all(query)
+
+                if relationship.secondary is not None:
+                    # We need to retrieve values from both the self_model and related_model. To achieve this, we must disable the default SQLAlchemy optimization that returns only related_model values. This is necessary because we use the keys variable to match both related_model and self_model.
+                    rows = await self._scalars_all(query, disabled_optimization_to_secondary_tables=True)
+                else:
+                    rows = await self._scalars_all(query)
 
                 def group_by_remote_key(row: Any) -> Tuple:
                     return tuple(
@@ -82,8 +142,13 @@ class StrawberrySQLAlchemyLoader:
                     )
 
                 grouped_keys: Mapping[Tuple, List[Any]] = defaultdict(list)
-                for row in rows:
-                    grouped_keys[group_by_remote_key(row)].append(row)
+                if relationship.secondary is None:
+                    for row in rows:
+                        grouped_keys[group_by_remote_key(row)].append(row)
+                else:
+                    for row in rows:
+                        grouped_keys[(row[0],)].append(row[1])
+
                 if relationship.uselist:
                     return [grouped_keys[key] for key in keys]
                 else:
@@ -94,3 +159,4 @@ class StrawberrySQLAlchemyLoader:
 
             self._loaders[relationship] = DataLoader(load_fn=load_fn)
             return self._loaders[relationship]
+    
