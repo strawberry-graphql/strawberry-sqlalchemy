@@ -327,8 +327,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     [
                         ("edges", List[edge_type]),  # type: ignore[valid-type]
                     ],
-                    # type: ignore[valid-type]
-                    bases=(relay.ListConnection[lazy_type],),
+                    bases=(relay.ListConnection[lazy_type],), # type: ignore[valid-type]
                 )
             )
             setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
@@ -834,8 +833,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            # type: ignore[arg-type]
-                            types.MethodType(func, type_),
+                            types.MethodType(func, type_), # type: ignore[arg-type]
                         )
 
                     # Adjust types that inherit from other types/interfaces that implement Node
