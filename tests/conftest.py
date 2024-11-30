@@ -296,3 +296,278 @@ def secondary_tables_with_normal_relationship(base, default_employee_department_
         )
 
     return Employee, Department, Building
+
+
+@pytest.fixture
+def expected_schema_from_secondary_tables():
+    return '''
+    type Department {
+      id: Int!
+      name: String
+      employees: EmployeeConnection!
+    }
+
+    type DepartmentConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [DepartmentEdge!]!
+    }
+
+    type DepartmentEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Department!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      role: String
+      department: DepartmentConnection!
+    }
+
+    type EmployeeConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [EmployeeEdge!]!
+    }
+
+    type EmployeeEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Employee!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: [Department!]!
+    }
+    '''
+
+
+@pytest.fixture
+def expected_schema_from_secondary_tables_with_more_secondary_tables():
+    return '''
+      type Building {
+        id: Int!
+        name: String!
+        employees: EmployeeConnection!
+      }
+
+      type BuildingConnection {
+        """Pagination data for this connection"""
+        pageInfo: PageInfo!
+        edges: [BuildingEdge!]!
+      }
+
+      type BuildingEdge {
+        """A cursor for use in pagination"""
+        cursor: String!
+
+        """The item at the end of the edge"""
+        node: Building!
+      }
+
+      type Department {
+        id: Int!
+        name: String!
+        employees: EmployeeConnection!
+      }
+
+      type DepartmentConnection {
+        """Pagination data for this connection"""
+        pageInfo: PageInfo!
+        edges: [DepartmentEdge!]!
+      }
+
+      type DepartmentEdge {
+        """A cursor for use in pagination"""
+        cursor: String!
+
+        """The item at the end of the edge"""
+        node: Department!
+      }
+
+      type Employee {
+        id: Int!
+        name: String!
+        role: String
+        department: DepartmentConnection!
+        building: BuildingConnection!
+      }
+
+      type EmployeeConnection {
+        """Pagination data for this connection"""
+        pageInfo: PageInfo!
+        edges: [EmployeeEdge!]!
+      }
+
+      type EmployeeEdge {
+        """A cursor for use in pagination"""
+        cursor: String!
+
+        """The item at the end of the edge"""
+        node: Employee!
+      }
+
+      """Information to aid in pagination."""
+      type PageInfo {
+        """When paginating forwards, are there more items?"""
+        hasNextPage: Boolean!
+
+        """When paginating backwards, are there more items?"""
+        hasPreviousPage: Boolean!
+
+        """When paginating backwards, the cursor to continue."""
+        startCursor: String
+
+        """When paginating forwards, the cursor to continue."""
+        endCursor: String
+      }
+
+      type Query {
+        departments: [Department!]!
+      }
+      '''
+    
+
+@pytest.fixture
+def expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false():
+    return '''
+    type Department {
+      id: Int!
+      name: String!
+      employees: Employee
+    }
+
+    type DepartmentConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [DepartmentEdge!]!
+    }
+
+    type DepartmentEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Department!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      role: String
+      department: DepartmentConnection!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: [Department!]!
+    }
+    '''
+
+
+@pytest.fixture
+def expected_schema_from_secondary_tables_with_more_secondary_tables_with__with_normal_relationship():
+    return '''
+    type Building {
+      id: Int!
+      name: String!
+      employees: EmployeeConnection!
+    }
+
+    type Department {
+      id: Int!
+      name: String!
+      employees: EmployeeConnection!
+    }
+
+    type DepartmentConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [DepartmentEdge!]!
+    }
+
+    type DepartmentEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Department!
+    }
+
+    type Employee {
+      id: Int!
+      name: String!
+      role: String
+      buildingId: Int
+      department: DepartmentConnection!
+      building: Building
+    }
+
+    type EmployeeConnection {
+      """Pagination data for this connection"""
+      pageInfo: PageInfo!
+      edges: [EmployeeEdge!]!
+    }
+
+    type EmployeeEdge {
+      """A cursor for use in pagination"""
+      cursor: String!
+
+      """The item at the end of the edge"""
+      node: Employee!
+    }
+
+    """Information to aid in pagination."""
+    type PageInfo {
+      """When paginating forwards, are there more items?"""
+      hasNextPage: Boolean!
+
+      """When paginating backwards, are there more items?"""
+      hasPreviousPage: Boolean!
+
+      """When paginating backwards, the cursor to continue."""
+      startCursor: String
+
+      """When paginating forwards, the cursor to continue."""
+      endCursor: String
+    }
+
+    type Query {
+      departments: [Department!]!
+    }
+    '''
