@@ -68,13 +68,14 @@ class StrawberrySQLAlchemyLoader:
             related_model = relationship.entity.entity
 
             async def load_fn(keys: List[Tuple]) -> List[Any]:
-                if relationship.secondary is None:
-                    query = select(related_model).filter(
+                def _build_normal_relationship_query(related_model, relationship, keys):
+                    return select(related_model).filter(
                         tuple_(
                             *[remote for _, remote in relationship.local_remote_pairs or []]
                         ).in_(keys)
                     )
-                else:
+                
+                def _build_relationship_with_secondary_table_query(related_model, relationship, keys):
                     # Use another query when relationship uses a secondary table
                     self_model = relationship.parent.entity
 
@@ -96,7 +97,7 @@ class StrawberrySQLAlchemyLoader:
                     query_keys = tuple([item[0] for item in keys])
 
                     # This query returns rows in this format -> (self_model.key, related_model)
-                    query = (
+                    return (
                         select(
                             getattr(self_model, self_model_key).label(
                                 self_model_key_label),
@@ -116,6 +117,11 @@ class StrawberrySQLAlchemyLoader:
                             remote_to_use.in_(query_keys)
                         )
                     )
+
+                def _build_query(*args):
+                    return _build_normal_relationship_query(*args) if relationship.secondary is None else _build_relationship_with_secondary_table_query(*args)
+
+                query = _build_query(related_model, relationship, keys) 
 
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
@@ -153,3 +159,4 @@ class StrawberrySQLAlchemyLoader:
 
             self._loaders[relationship] = DataLoader(load_fn=load_fn)
             return self._loaders[relationship]
+    
