@@ -79,13 +79,18 @@ class StrawberrySQLAlchemyLoader:
                     self_model = relationship.parent.entity
 
                     if not relationship.local_remote_pairs:
-                        raise InvalidLocalRemotePairs(f"{related_model.__name__} -- {self_model.__name__}")
+                        raise InvalidLocalRemotePairs(
+                            f"{related_model.__name__} -- {self_model.__name__}")
 
-                    self_model_key_label = str(relationship.local_remote_pairs[0][1].key)
-                    related_model_key_label = str(relationship.local_remote_pairs[1][1].key)
+                    self_model_key_label = str(
+                        relationship.local_remote_pairs[0][1].key)
+                    related_model_key_label = str(
+                        relationship.local_remote_pairs[1][1].key)
 
-                    self_model_key = str(relationship.local_remote_pairs[0][0].key)
-                    related_model_key = str(relationship.local_remote_pairs[1][0].key)
+                    self_model_key = str(
+                        relationship.local_remote_pairs[0][0].key)
+                    related_model_key = str(
+                        relationship.local_remote_pairs[1][0].key)
 
                     remote_to_use = relationship.local_remote_pairs[0][1]
                     query_keys = tuple([item[0] for item in keys])
@@ -93,7 +98,8 @@ class StrawberrySQLAlchemyLoader:
                     # This query returns rows in this format -> (self_model.key, related_model)
                     query = (
                         select(
-                            getattr(self_model, self_model_key).label(self_model_key_label),
+                            getattr(self_model, self_model_key).label(
+                                self_model_key_label),
                             related_model
                         )
                         .join(
@@ -136,7 +142,7 @@ class StrawberrySQLAlchemyLoader:
                 else:
                     for row in rows:
                         grouped_keys[(row[0],)].append(row[1])
-                    
+
                 if relationship.uselist:
                     return [grouped_keys[key] for key in keys]
                 else:
