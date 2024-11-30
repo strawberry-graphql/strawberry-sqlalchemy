@@ -114,18 +114,20 @@ def base():
 
 
 @pytest.fixture
-def secondary_tables(base):
+def default_employee_department_join_table(base):
     EmployeeDepartmentJoinTable = sqlalchemy.Table(
         "employee_department_join_table",
         base.metadata,
         sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
-        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
-            "department.id"), primary_key=True),
+        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey("department.id"), primary_key=True),
     )
 
+
+@pytest.fixture
+def secondary_tables(base, default_employee_department_join_table):
     class Employee(base):
         __tablename__ = "employee"
-        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
+        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True, nullable=False)
         name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
         role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
         department = orm.relationship(
@@ -182,14 +184,7 @@ def secondary_tables_with_another_foreign_key(base):
 
 
 @pytest.fixture
-def secondary_tables_with_more_secondary_tables(base):
-    EmployeeDepartmentJoinTable = sqlalchemy.Table(
-        "employee_department_join_table",
-        base.metadata,
-        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
-        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey("department.id"), primary_key=True),
-    )
-
+def secondary_tables_with_more_secondary_tables(base, default_employee_department_join_table):
     EmployeeBuildingJoinTable = sqlalchemy.Table(
         "employee_building_join_table",
         base.metadata,
@@ -237,15 +232,7 @@ def secondary_tables_with_more_secondary_tables(base):
 
 
 @pytest.fixture
-def secondary_tables_with_use_list_false(base):
-    EmployeeDepartmentJoinTable = sqlalchemy.Table(
-        "employee_department_join_table",
-        base.metadata,
-        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
-        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
-            "department.id"), primary_key=True),
-    )
-
+def secondary_tables_with_use_list_false(base, default_employee_department_join_table):
     class Employee(base):
         __tablename__ = "employee"
         id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
@@ -272,15 +259,7 @@ def secondary_tables_with_use_list_false(base):
 
 
 @pytest.fixture
-def secondary_tables_with_normal_relationship(base):
-    EmployeeDepartmentJoinTable = sqlalchemy.Table(
-        "employee_department_join_table",
-        base.metadata,
-        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
-        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
-            "department.id"), primary_key=True),
-    )
-
+def secondary_tables_with_normal_relationship(base, default_employee_department_join_table):
     class Employee(base):
         __tablename__ = "employee"
         id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
@@ -317,6 +296,3 @@ def secondary_tables_with_normal_relationship(base):
         )
 
     return Employee, Department, Building
-
-
-# TODO refactor
