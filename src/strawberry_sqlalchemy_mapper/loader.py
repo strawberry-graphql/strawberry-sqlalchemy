@@ -90,7 +90,7 @@ class StrawberrySQLAlchemyLoader:
                     remote_to_use = relationship.local_remote_pairs[0][1]
                     query_keys = tuple([item[0] for item in keys])
 
-                    # This query returns every row equal (self_model.key, related_model)
+                    # This query returns rows in this format -> (self_model.key, related_model)
                     query = (
                         select(
                             getattr(self_model, self_model_key).label(self_model_key_label),

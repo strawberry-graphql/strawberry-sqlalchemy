@@ -235,9 +235,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             Type[BaseModelType]], str]] = None,
         model_to_interface_name: Optional[Callable[[
             Type[BaseModelType]], str]] = None,
-        extra_sqlalchemy_type_to_strawberry_type_map: Optional[
-            Mapping[Type[TypeEngine], Type[Any]]
-        ] = None,
+        extra_sqlalchemy_type_to_strawberry_type_map: Optional[Mapping[Type[TypeEngine], Type[Any]]
+                                                               ] = None,
     ) -> None:
         if model_to_type_name is None:
             model_to_type_name = self._default_model_to_type_name
@@ -328,7 +327,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     [
                         ("edges", List[edge_type]),  # type: ignore[valid-type]
                     ],
-                    bases=(relay.ListConnection[lazy_type],), # type: ignore[valid-type]
+                    # type: ignore[valid-type]
+                    bases=(relay.ListConnection[lazy_type],),
                 )
             )
             setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
@@ -519,7 +519,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 else:
                     # If has a secondary table, gets only the first ID as additional IDs require a separate query
                     if not relationship.local_remote_pairs:
-                        raise InvalidLocalRemotePairs(f"{relationship.entity.entity.__name__} -- {relationship.parent.entity.__name__}")
+                        raise InvalidLocalRemotePairs(
+                            f"{relationship.entity.entity.__name__} -- {relationship.parent.entity.__name__}")
 
                     local_remote_pairs_secondary_table_local = relationship.local_remote_pairs[
                         0][0]
@@ -833,7 +834,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            types.MethodType(func, type_), # type: ignore[arg-type]
+                            # type: ignore[arg-type]
+                            types.MethodType(func, type_),
                         )
 
                     # Adjust types that inherit from other types/interfaces that implement Node
