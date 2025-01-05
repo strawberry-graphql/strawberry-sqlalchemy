@@ -14,11 +14,14 @@ from typing import (
 )
 
 import sqlakeyset
+import sqlakeyset.asyncio
 import strawberry
-from sqlalchemy import and_, or_
+from sqlalchemy.engine import Row
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
+from sqlalchemy.orm import Query
+from sqlalchemy.sql.expression import Select, and_, or_
 from strawberry import relay
 from strawberry.relay.exceptions import NodeIDAnnotationError
 from strawberry.relay.types import NodeType
@@ -27,7 +30,7 @@ from strawberry.types.base import StrawberryContainer, get_object_definition
 if TYPE_CHECKING:
     from typing_extensions import Literal, Self
 
-    from sqlalchemy.orm import Query, Session
+    from sqlalchemy.orm import Session
     from strawberry.types.info import Info
     from strawberry.utils.await_maybe import AwaitableOrValue
 
@@ -64,7 +67,7 @@ class KeysetConnection(relay.Connection[NodeType]):
     @classmethod
     def resolve_connection(
         cls,
-        nodes: Union[Query, StrawberrySQLAlchemyAsyncQuery],  # type: ignore[override]
+        nodes: Union[Query, Select, StrawberrySQLAlchemyAsyncQuery],  # type: ignore[override]
         *,
         info: Info,
         before: Optional[str] = None,
@@ -110,40 +113,76 @@ class KeysetConnection(relay.Connection[NodeType]):
                     end_cursor=page.paging.get_bookmark_at(-1) if page else None,
                 ),
                 edges=[
-                    edge_class.resolve_edge(n, cursor=page.paging.get_bookmark_at(i))
+                    edge_class.resolve_edge(
+                        n[0] if isinstance(n, Row) else n,
+                        cursor=page.paging.get_bookmark_at(i),
+                    )
                     for i, n in enumerate(page)
                 ],
             )
 
-        def resolve_nodes(s: Session, nodes=nodes):
-            if isinstance(nodes, StrawberrySQLAlchemyAsyncQuery):
-                nodes = nodes.query(s)
+        def resolve_nodes(s: Session, nodes: Union[Query, Select]):
+            if isinstance(nodes, Select):
+                return resolve_connection(
+                    sqlakeyset.select_page(
+                        s,
+                        nodes,
+                        per_page=per_page,
+                        after=(
+                            sqlakeyset.unserialize_bookmark(after).place
+                            if after
+                            else None
+                        ),
+                        before=(
+                            sqlakeyset.unserialize_bookmark(before).place
+                            if before
+                            else None
+                        ),
+                    )
+                )
 
             return resolve_connection(
                 sqlakeyset.get_page(
                     nodes,
+                    per_page=per_page,
+                    after=(
+                        sqlakeyset.unserialize_bookmark(after).place if after else None
+                    ),
                     before=(
                         sqlakeyset.unserialize_bookmark(before).place
                         if before
                         else None
                     ),
-                    after=(
-                        sqlakeyset.unserialize_bookmark(after).place if after else None
-                    ),
-                    per_page=per_page,
                 )
             )
 
-        # TODO: It would be better to aboid session.run_sync in here but
-        # sqlakeyset doesn't have a `get_page` async counterpart.
+        async def resolve_nodes_async(s: AsyncSession, nodes: Select):
+            # the asynchronous SQLAlchemy API only supports select
+            return resolve_connection(
+                await sqlakeyset.asyncio.select_page(
+                    s,
+                    nodes,
+                    per_page=per_page,
+                    after=(
+                        sqlakeyset.unserialize_bookmark(after).place if after else None
+                    ),
+                    before=(
+                        sqlakeyset.unserialize_bookmark(before).place
+                        if before
+                        else None
+                    ),
+                )
+            )
+
         if isinstance(session, AsyncSession):
+            if isinstance(nodes, StrawberrySQLAlchemyAsyncQuery):
+                nodes = nodes.query()
 
-            async def resolve_async(nodes=nodes):
-                return await session.run_sync(lambda s: resolve_nodes(s))
+            assert isinstance(nodes, Select)
+            return resolve_nodes_async(session, nodes)
 
-            return resolve_async()
-
-        return resolve_nodes(session)
+        assert isinstance(nodes, (Query, Select))
+        return resolve_nodes(session, nodes)
 
 
 @overload
