@@ -103,7 +103,6 @@ BaseModelType = TypeVar("BaseModelType")
 SkipTypeSentinelT = NewType("SkipTypeSentinelT", object)
 SkipTypeSentinel = cast(SkipTypeSentinelT, sentinel.create("SkipTypeSentinel"))
 
-
 #: Set on generated types to the original type handed to the decorator
 _ORIGINAL_TYPE_KEY = "_original_type"
 #: Set on generated types, containing the list of keys of fields that were generated
@@ -387,7 +386,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.uselist:
             # Use list if excluding relay pagination
             if use_list:
-                return List[ForwardRef(type_name)] # type: ignore
+                return List[ForwardRef(type_name)]  # type: ignore
 
             return self._connection_type_for(type_name)
         else:
@@ -572,7 +571,12 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             in_between_objects = await in_between_resolver(self, info)
             if in_between_objects is None:
                 if is_multiple:
-                    return connection_type(edges=[])
+                    return connection_type(edges=[], page_info=relay.PageInfo(
+                        has_next_page=False,
+                        has_previous_page=False,
+                        start_cursor=None,
+                        end_cursor=None,
+                    ))
                 else:
                     return None
             if descriptor.value_attr in in_between_mapper.relationships:
@@ -592,7 +596,14 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     outputs = await end_relationship_resolver(in_between_objects, info)
                 if not isinstance(outputs, collections.abc.Iterable):
                     return outputs
-                return connection_type(edges=[edge_type(node=obj) for obj in outputs])
+                edges = [edge_type(node=obj) for obj in outputs]
+                return connection_type(edges=edges,
+                                       page_info=relay.PageInfo(
+                                           has_next_page=False,
+                                           has_previous_page=False,
+                                           start_cursor=edges[0].cursor if edges else None,
+                                           end_cursor=edges[-1].cursor if edges else None,
+                                       ))
             else:
                 assert descriptor.value_attr in in_between_mapper.columns
                 if isinstance(in_between_objects, collections.abc.Iterable):
