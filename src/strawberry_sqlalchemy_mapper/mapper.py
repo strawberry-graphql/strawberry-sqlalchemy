@@ -596,7 +596,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     outputs = await end_relationship_resolver(in_between_objects, info)
                 if not isinstance(outputs, collections.abc.Iterable):
                     return outputs
-                edges = [edge_type(node=obj) for obj in outputs]
+                edges = [edge_type(node=obj, cursor=None) for obj in outputs]
                 return connection_type(edges=edges,
                                        page_info=relay.PageInfo(
                                            has_next_page=False,
