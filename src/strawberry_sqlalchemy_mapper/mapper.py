@@ -826,8 +826,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            # type: ignore[arg-type]
-                            types.MethodType(func, type_),
+                            types.MethodType(func, type_),  # type: ignore[arg-type]
                         )
 
                     # Adjust types that inherit from other types/interfaces that implement Node
