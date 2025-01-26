@@ -10,7 +10,6 @@
     "python.pythonPath": "/usr/local/bin/python",
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": true,
-    "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
     "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
     "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
     "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
