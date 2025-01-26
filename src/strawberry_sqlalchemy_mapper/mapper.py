@@ -322,8 +322,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     [
                         ("edges", List[edge_type]),  # type: ignore[valid-type]
                     ],
-                    # type: ignore[valid-type]
-                    bases=(relay.ListConnection[lazy_type],),
+                    bases=(relay.ListConnection[lazy_type],),  # type: ignore[valid-type]
                 )
             )
             setattr(connection_type, _GENERATED_FIELD_KEYS_KEY, ["edges"])
