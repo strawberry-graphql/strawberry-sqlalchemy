@@ -145,21 +145,20 @@ Clone the repository
     git clone git@github.com:YourLogin/strawberry-sqlalchemy-mapper.git
     cd strawberry-sqlalchemy-mapper
 
-#. You should run::
+Open the Dev Container
+----------------------
 
-    pip install -U pip setuptools -e .
+#. Install `Dev Containers`_.
 
-   to be able to import the package under development in the Python REPL.
+#. Press ``Ctrl+Shift+P`` to open the command tab and enter ``Dev Containers: Open Folder in Container...``.
 
-   .. todo:: if you are not using pre-commit, please remove the following item:
+#. Select the root directory of this repository.
+   Dev Containers will now install the environment dependencies as well as |pre-commit|_
 
-#. Install |pre-commit|_::
+#. When installation is complete, press ``Ctrl+Shift+P`` to open the command tab and enter ``Python Select Interpreter``
 
-    pip install pre-commit
-    pre-commit install
+#. Select the environment labeled 'poetry'.
 
-   ``strawberry-sqlalchemy-mapper`` comes with a lot of hooks configured to automatically help the
-   developer to check the code being written.
 
 Implement your changes
 ----------------------
@@ -329,6 +328,7 @@ on PyPI_, the following steps can be used to release a new version for
 .. _contribution-guide.org: https://www.contribution-guide.org/
 .. _creating a PR: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
 .. _descriptive commit message: https://chris.beams.io/posts/git-commit
+.. _Dev Containers: https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers
 .. _docstrings: https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
 .. _first-contributions tutorial: https://github.com/firstcontributions/first-contributions
 .. _flake8: https://flake8.pycqa.org/en/stable/
