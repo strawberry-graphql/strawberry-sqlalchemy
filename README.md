@@ -213,6 +213,8 @@ If you have a suggestion that would make this better, please fork the repo and c
 4. Push to the Branch (git push origin feature)
 5. Open a Pull Request
 
+For more details on how to contribute, as well as how to setup the project on your local machine, please refer to [the docs](CONTRIBUTING.rst)
+
 
 ### Prerequisites
 
