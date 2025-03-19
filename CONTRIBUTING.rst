@@ -341,8 +341,8 @@ on PyPI_, the following steps can be used to release a new version for
 .. |the repository service| replace:: GitHub
 .. |contribute button| replace:: "Create pull request"
 
-.. _repository: https://github.com/<USERNAME>/strawberry-sqlalchemy-mapper
-.. _issue tracker: https://github.com/<USERNAME>/strawberry-sqlalchemy-mapper/issues
+.. _repository: https://github.com/strawberry-graphql/strawberry-sqlalchemy-mapper
+.. _issue tracker: https://github.com/strawberry-graphql/strawberry-sqlalchemy-mapper/issues
 .. <-- end -->
 
 
