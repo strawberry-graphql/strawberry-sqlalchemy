@@ -119,46 +119,48 @@ Clone the repository
 Install dependencies and plugins
 --------------------------------
 
-There are two ways to set up the environment for local development:
+.. todo:: Rewrite the following snippets to use the poetry environment rather than setuptools
 
-#. Manual environment setup
+   There are two ways to set up the environment for local development:
 
-#. Dev Container setup
+   #. Manual environment setup
 
-Method 1: Manual environment setup
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   #. Dev Container setup
 
-#. Before you start coding, we recommend creating an isolated `virtual
-   environment`_ to avoid any problems with your installed Python packages.
-   This can easily be done via either |virtualenv|_::
+   Method 1: Manual environment setup
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-      virtualenv <PATH TO VENV>
-      source <PATH TO VENV>/bin/activate
+   #. Before you start coding, we recommend creating an isolated `virtual
+      environment`_ to avoid any problems with your installed Python packages.
+      This can easily be done via either |virtualenv|_::
 
-   or Miniconda_::
+         virtualenv <PATH TO VENV>
+         source <PATH TO VENV>/bin/activate
 
-      conda create -n strawberry-sqlalchemy-mapper python=3 six virtualenv pytest pytest-cov
-      conda activate strawberry-sqlalchemy-mapper
+      or Miniconda_::
 
-#. You should run::
+         conda create -n strawberry-sqlalchemy-mapper python=3 six virtualenv pytest pytest-cov
+         conda activate strawberry-sqlalchemy-mapper
 
-    pip install -U pip setuptools -e .
+   #. You should run::
 
-   to be able to import the package under development in the Python REPL.
+      pip install -U pip setuptools -e .
 
-   .. todo:: if you are not using pre-commit, please remove the following item:
+      to be able to import the package under development in the Python REPL.
 
-#. Install |pre-commit|_::
+      .. todo:: if you are not using pre-commit, please remove the following item:
 
-    pip install pre-commit
-    pre-commit install
+   #. Install |pre-commit|_::
 
-   ``strawberry-sqlalchemy-mapper`` comes with a lot of hooks configured to automatically help the
-   developer to check the code being written.
+      pip install pre-commit
+      pre-commit install
+
+      ``strawberry-sqlalchemy-mapper`` comes with a lot of hooks configured to automatically help the
+      developer to check the code being written.
 
 
-Method 2: Dev Container setup
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   Method 2: Dev Container setup
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 #. Install `Dev Containers`_.
 
