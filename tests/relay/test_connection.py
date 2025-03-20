@@ -7,7 +7,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.orm import sessionmaker
 from strawberry import relay
-from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper, connection
+from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper, connection, StrawberrySQLAlchemyLoader
 from strawberry_sqlalchemy_mapper.relay import KeysetConnection
 
 
@@ -37,7 +37,8 @@ def test_query_empty(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -74,7 +75,8 @@ def test_query(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -259,7 +261,8 @@ def test_query_with_first(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -319,7 +322,8 @@ def test_query_with_first_and_after(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -381,7 +385,8 @@ def test_query_with_last(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -441,7 +446,8 @@ def test_query_with_last_and_before(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(
+            sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -467,7 +473,8 @@ def test_query_with_last_and_before(
         session.commit()
 
         result = schema.execute_sync(
-            query, {"first": 1, "before": relay.to_base64("arrayconnection", 2)}
+            query, {"first": 1, "before": relay.to_base64(
+                "arrayconnection", 2)}
         )
         assert result.errors is None
 
@@ -753,5 +760,164 @@ async def test_query_keyset_async(
                     "hasPreviousPage": True,
                     "startCursor": ">s:Grape",
                 },
+            }
+        }
+
+
+# TODO Investigate this test
+@pytest.mark.skip("This test is currently failing because the Query with relay.ListConnection generates two DepartmentConnection, which violates the schema's expectations. After investigation, it appears this issue is related to the Relay implementation rather than the secondary table issue. We'll address this later. Additionally, note that the `result.data` may be incorrect in this test.")
+@pytest.mark.asyncio
+async def test_query_with_secondary_table_with_values_list(
+    secondary_tables,
+    base,
+    async_engine,
+    async_sessionmaker
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+
+    mapper = StrawberrySQLAlchemyMapper()
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(DepartmentModel)
+    class Department():
+        pass
+
+    @mapper.type(EmployeeModel)
+    class Employee():
+        pass
+
+    @strawberry.type
+    class Query:
+        departments: relay.ListConnection[Department] = connection(
+            sessionmaker=async_sessionmaker)
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = """\
+        query {
+            departments {
+                edges {
+                    node {
+                        id
+                        name
+                        employees {                  
+                            edges {
+                                node {
+                                    id
+                                    name
+                                    role
+                                    department {
+                                        edges {
+                                            node {
+                                                id
+                                                name
+                                            }
+                                        }
+                                    }
+                                }
+                            }          
+                        }
+                    }
+                }
+            }
+        }
+    """
+
+    # Create test data
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        department1 = DepartmentModel(id=10, name="Department Test 1")
+        department2 = DepartmentModel(id=3, name="Department Test 2")
+        e1 = EmployeeModel(id=1, name="John", role="Developer")
+        e2 = EmployeeModel(id=5, name="Bill", role="Doctor")
+        e3 = EmployeeModel(id=4, name="Maria", role="Teacher")
+        department1.employees.append(e1)
+        department1.employees.append(e2)
+        department2.employees.append(e3)
+        session.add_all([department1, department2, e1, e2, e3])
+        await session.commit()
+
+        result = await schema.execute(query, context_value={
+            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                async_bind_factory=async_sessionmaker
+            )
+        })
+        assert result.errors is None
+        assert result.data == {
+            "departments": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": 10,
+                            "name": "Department Test 1",
+                            "employees": {
+                                "edges": [
+                                    {
+                                        "node": {
+                                            "id": 5,
+                                            "name": "Bill",
+                                            "role": "Doctor",
+                                            "department": {
+                                                "edges": [
+                                                    {
+                                                        "node": {
+                                                            "id": 10,
+                                                            "name": "Department Test 1"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "node": {
+                                            "id": 1,
+                                            "name": "John",
+                                            "role": "Developer",
+                                            "department": {
+                                                "edges": [
+                                                    {
+                                                        "node": {
+                                                            "id": 10,
+                                                            "name": "Department Test 1"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "node": {
+                            "id": 3,
+                            "name": "Department Test 2",
+                            "employees": {
+                                "edges": [
+                                    {
+                                        "node": {
+                                            "id": 4,
+                                            "name": "Maria",
+                                            "role": "Teacher",
+                                            "department": {
+                                                "edges": [
+                                                    {
+                                                        "node": {
+                                                            "id": 3,
+                                                            "name": "Department Test 2"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
             }
         }

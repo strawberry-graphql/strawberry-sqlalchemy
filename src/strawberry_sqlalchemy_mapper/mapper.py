@@ -82,6 +82,7 @@ from strawberry.types.private import is_private
 from strawberry_sqlalchemy_mapper.exc import (
     HybridPropertyNotAnnotated,
     InterfaceModelNotPolymorphic,
+    InvalidLocalRemotePairs,
     UnsupportedAssociationProxyTarget,
     UnsupportedColumnType,
     UnsupportedDescriptorType,
@@ -387,7 +388,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.uselist:
             # Use list if excluding relay pagination
             if use_list:
-                return List[ForwardRef(type_name)] # type: ignore
+                return List[ForwardRef(type_name)]  # type: ignore
 
             return self._connection_type_for(type_name)
         else:
@@ -500,13 +501,30 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             if relationship.key not in instance_state.unloaded:
                 related_objects = getattr(self, relationship.key)
             else:
-                relationship_key = tuple(
-                    [
+                if relationship.secondary is None:
+                    relationship_key = tuple(
                         getattr(self, local.key)
                         for local, _ in relationship.local_remote_pairs or []
                         if local.key
-                    ]
-                )
+                    )
+                else:
+                    # If has a secondary table, gets only the first ID as additional IDs require a separate query
+                    if not relationship.local_remote_pairs:
+                        raise InvalidLocalRemotePairs(
+                            f"{relationship.entity.entity.__name__} -- {relationship.parent.entity.__name__}"
+                        )
+
+                    local_remote_pairs_secondary_table_local = (
+                        relationship.local_remote_pairs[0][0]
+                    )
+                    relationship_key = tuple(
+                        [
+                            getattr(
+                                self, str(local_remote_pairs_secondary_table_local.key)
+                            ),
+                        ]
+                    )
+
                 if any(item is None for item in relationship_key):
                     if relationship.uselist:
                         return []
@@ -536,7 +554,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.uselist and not use_list:
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
-                self.model_to_type_or_interface_name(relationship.entity.entity),  # type: ignore[arg-type]
+                self.model_to_type_or_interface_name(
+                    relationship.entity.entity  # type: ignore[arg-type]
+                ),
             )
         else:
             return relationship_resolver
@@ -785,7 +805,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             # ignore inherited `is_type_of`
             if "is_type_of" not in type_.__dict__:
                 type_.is_type_of = (
-                    lambda obj, info: type(obj) == model or type(obj) == type_
+                    lambda obj, info: type(obj) == model  # noqa: E721
+                    or type(obj) == type_  # noqa: E721
                 )
 
             # Default querying methods for relay
