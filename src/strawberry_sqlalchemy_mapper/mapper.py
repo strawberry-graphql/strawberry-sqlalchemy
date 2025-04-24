@@ -151,11 +151,13 @@ class StrawberrySQLAlchemyType(Generic[BaseModelType]):
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self: ...
+    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self:
+        ...
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]: ...
+    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]:
+        ...
 
     @classmethod
     def from_type(
@@ -388,7 +390,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.uselist:
             # Use list if excluding relay pagination
             if use_list:
-                return List[ForwardRef(type_name)] # type: ignore
+                return List[ForwardRef(type_name)]  # type: ignore
 
             return self._connection_type_for(type_name)
         else:
@@ -834,7 +836,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 mapped_type = strawberry.interface(type_)
                 self.mapped_interfaces[type_.__name__] = mapped_type
             elif use_federation:
-                mapped_type = strawberry.federation.type(type_, directives=directives if directives else ())
+                mapped_type = strawberry.federation.type(
+                    type_, directives=directives if directives else ()
+                )
                 self.mapped_types[type_.__name__] = mapped_type
             else:
                 mapped_type = strawberry.type(type_, directives=directives)
