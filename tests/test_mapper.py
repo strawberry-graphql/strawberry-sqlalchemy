@@ -8,7 +8,7 @@ from sqlalchemy import JSON, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
 from sqlalchemy.orm import relationship
 from strawberry.scalars import JSON as StrawberryJSON
-from strawberry.types.base import StrawberryOptional
+from strawberry.types.base import StrawberryList, StrawberryOptional
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
 
@@ -263,6 +263,35 @@ def test_interface_and_type_polymorphic(
     assert {"Employee", "Lawyer"} == {t.__name__ for t in additional_types}
 
 
+def test_use_list(employee_and_department_tables, mapper):
+    Employee, Department = employee_and_department_tables
+
+    @mapper.type(Employee)
+    class Employee:
+        pass
+
+    @mapper.type(Department)
+    class Department:
+        __use_list__ = ["employees"]
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 2
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    mapped_department_type = additional_types[1]
+    assert mapped_department_type.__name__ == "Department"
+    assert len(mapped_department_type.__strawberry_definition__.fields) == 3
+    department_type_fields = mapped_department_type.__strawberry_definition__.fields
+
+    name = next(
+        (field for field in department_type_fields if field.name == "employees"), None
+    )
+    assert name is not None
+    assert isinstance(name.type, StrawberryOptional) is False
+    assert isinstance(name.type, StrawberryList) is True
+
+
 def test_type_relationships(employee_and_department_tables, mapper):
     Employee, _ = employee_and_department_tables
 
@@ -297,8 +326,7 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     @strawberry.type
     class Query:
         @strawberry.field
-        def departments(self) -> Department:
-            ...
+        def departments(self) -> Department: ...
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)

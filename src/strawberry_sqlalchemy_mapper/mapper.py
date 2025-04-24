@@ -151,13 +151,11 @@ class StrawberrySQLAlchemyType(Generic[BaseModelType]):
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self:
-        ...
+    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self: ...
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]:
-        ...
+    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]: ...
 
     @classmethod
     def from_type(
@@ -375,7 +373,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return type_annotation
 
     def _convert_relationship_to_strawberry_type(
-        self, relationship: RelationshipProperty
+        self, relationship: RelationshipProperty, use_list: bool = False
     ) -> Union[Type[Any], ForwardRef]:
         """
         Given a SQLAlchemy relationship, return the type annotation for the field in the
@@ -388,6 +386,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         else:
             self._related_type_models.add(relationship_model)
         if relationship.uselist:
+            # Use list if excluding relay pagination
+            if use_list:
+                return List[ForwardRef(type_name)] # type: ignore
+
             return self._connection_type_for(type_name)
         else:
             if self._get_relationship_is_optional(relationship):
@@ -525,14 +527,14 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return resolve
 
     def connection_resolver_for(
-        self, relationship: RelationshipProperty
+        self, relationship: RelationshipProperty, use_list=False
     ) -> Callable[..., Awaitable[Any]]:
         """
         Return an async field resolver for the given relationship that
         returns a Connection instead of an array of objects.
         """
         relationship_resolver = self.relationship_resolver_for(relationship)
-        if relationship.uselist:
+        if relationship.uselist and not use_list:
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
                 self.model_to_type_or_interface_name(relationship.entity.entity),  # type: ignore[arg-type]
@@ -668,6 +670,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             generated_field_keys = []
 
             excluded_keys = getattr(type_, "__exclude__", [])
+            list_keys = getattr(type_, "__use_list__", [])
 
             # if the type inherits from another mapped type, then it may have
             # generated resolvers. These will be treated by dataclasses as having
@@ -692,7 +695,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 ):
                     continue
                 strawberry_type = self._convert_relationship_to_strawberry_type(
-                    relationship
+                    relationship,
+                    key in list_keys,
                 )
                 self._add_annotation(
                     type_,
@@ -702,7 +706,12 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 )
                 sqlalchemy_field = cast(
                     StrawberryField,
-                    field(resolver=self.connection_resolver_for(relationship)),
+                    field(
+                        resolver=self.connection_resolver_for(
+                            relationship,
+                            key in list_keys,
+                        )
+                    ),
                 )
                 assert not sqlalchemy_field.init
                 setattr(
