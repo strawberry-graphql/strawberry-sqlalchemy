@@ -8,3 +8,4 @@ Release type: enhancement
   @mapper.type(Employee, directives=["@deprecated(reason: 'Use newEmployee instead')"])
   class Employee:
       pass
+  ```
