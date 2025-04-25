@@ -1,6 +1,6 @@
 
 ```markdown
-# <img src="logo.png" alt="strawberry-sqlalchemy-mapper" width="40"/> Strawberry SQLAlchemy Mapper 
+# <img src=".github/logo.png" alt="strawberry-sqlalchemy-mapper" width="40"/> Strawberry SQLAlchemy Mapper 
 
 [![PyPI Version][pypi-badge]][pypi-url]  
 [![Python 3.8+][python-badge]][python-url]  
