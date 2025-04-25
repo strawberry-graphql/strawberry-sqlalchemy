@@ -1,3 +1,3 @@
 Release type: patch
 
-Fixes relay pagination logic fo association proxy logic.
+Fix association proxy mapping failures due to missing `page_info` or `cursor` arguments in constructors.

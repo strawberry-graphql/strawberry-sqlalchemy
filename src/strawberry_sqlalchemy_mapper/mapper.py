@@ -574,12 +574,14 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             in_between_objects = await in_between_resolver(self, info)
             if in_between_objects is None:
                 if is_multiple:
-                    return connection_type(edges=[], page_info=relay.PageInfo(
-                        has_next_page=False,
-                        has_previous_page=False,
-                        start_cursor=None,
-                        end_cursor=None,
-                    ))
+                    return connection_type(
+                        edges=[], 
+                        page_info=relay.PageInfo(
+                            has_next_page=False,
+                            has_previous_page=False,
+                            start_cursor=None,
+                            end_cursor=None,
+                        ))
                 else:
                     return None
             if descriptor.value_attr in in_between_mapper.relationships:
@@ -600,13 +602,14 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 if not isinstance(outputs, collections.abc.Iterable):
                     return outputs
                 edges = [edge_type(node=obj, cursor=None) for obj in outputs]
-                return connection_type(edges=edges,
-                                       page_info=relay.PageInfo(
-                                           has_next_page=False,
-                                           has_previous_page=False,
-                                           start_cursor=edges[0].cursor if edges else None,
-                                           end_cursor=edges[-1].cursor if edges else None,
-                                       ))
+                return connection_type(
+                    edges=edges,
+                    page_info=relay.PageInfo(
+                        has_previous_page=False,
+                        has_next_page=False,
+                        start_cursor=edges[0].cursor if edges else None,
+                        end_cursor=edges[-1].cursor if edges else None,
+                    ))
             else:
                 assert descriptor.value_attr in in_between_mapper.columns
                 if isinstance(in_between_objects, collections.abc.Iterable):
