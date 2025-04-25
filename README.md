@@ -1,13 +1,8 @@
 
-```markdown
-# <img src=".github/logo.png" alt="strawberry-sqlalchemy-mapper" width="40"/> Strawberry SQLAlchemy Mapper
-``` 
+<img src="https://github.com/strawberry-graphql/strawberry/raw/main/.github/logo.png" width="124" height="150">
 
-[![PyPI Version][pypi-badge]][pypi-url]  
-[![Python 3.8+][python-badge]][python-url]  
-[![Test Coverage][coverage-badge]][coverage-url]  
-[![CI/CD Status][ci-badge]][ci-url]  
-[![Documentation][docs-badge]][docs-url]
+
+[![PyPI Version][pypi-badge]][pypi-url]  ![Python 3.8+][python-badge]  [![Test Coverage][coverage-badge]][coverage-url]  [![CI/CD Status][ci-badge]][ci-url]  [![Documentation][docs-badge]][docs-url]
 
 > The ultimate SQLAlchemy-to-Strawberry type converter with relationship superpowers 🔥
 
