@@ -326,7 +326,8 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     @strawberry.type
     class Query:
         @strawberry.field
-        def departments(self) -> Department: ...
+        def departments(self) -> Department:
+            ...
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
@@ -379,3 +380,83 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     }
     '''
     assert str(schema) == textwrap.dedent(expected).strip()
+
+
+@pytest.mark.parametrize(
+    "directives",
+    [
+        (["@deprecated(reason: 'Use newEmployee instead')"]),
+        (
+            [
+                "@deprecated(reason: 'Use newEmployee instead')",
+                "@customDirective(value: 'example')",
+            ]
+        ),
+    ],
+)
+def test_type_with_directives(mapper, employee_table, directives):
+    Employee = employee_table
+
+    @mapper.type(Employee, directives=directives)
+    class Employee:
+        pass
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 1
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
+    assert mapped_employee_type.__strawberry_definition__.directives == directives
+
+
+@pytest.mark.parametrize(
+    "directives",
+    [
+        (["@deprecated(reason: 'Use newEmployee instead')"]),
+        (
+            [
+                "@deprecated(reason: 'Use newEmployee instead')",
+                "@customDirective(value: 'example')",
+            ]
+        ),
+    ],
+)
+def test_type_with_directives_and_federation(mapper, employee_table, directives):
+    Employee = employee_table
+
+    @mapper.type(Employee, directives=directives, use_federation=True)
+    class Employee:
+        pass
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 1
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
+    assert mapped_employee_type.__strawberry_definition__.directives == directives
+
+
+@pytest.mark.parametrize(
+    "use_federation_value, expected_directives",
+    [(True, []), (False, ())],
+)
+def test_type_with_default_directives(
+    mapper, employee_table, use_federation_value, expected_directives
+):
+    Employee = employee_table
+
+    @mapper.type(Employee, use_federation=use_federation_value)
+    class Employee:
+        pass
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 1
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
+    assert (
+        mapped_employee_type.__strawberry_definition__.directives == expected_directives
+    )

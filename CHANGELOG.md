@@ -1,6 +1,21 @@
 CHANGELOG
 =========
 
+0.6.0 - 2025-04-25
+------------------
+
+**Added support for GraphQL directives** in the SQLAlchemy type mapper, enabling better integration with GraphQL federation.
+
+**Example usage:**
+```python
+@mapper.type(Employee, directives=["@deprecated(reason: 'Use newEmployee instead')"])
+class Employee:
+    pass
+```
+
+Contributed by [Cameron Sechrist](https://github.com/csechrist) via [PR #204](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/204/)
+
+
 0.5.0 - 2024-11-12
 ------------------
 
