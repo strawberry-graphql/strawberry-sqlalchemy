@@ -13,11 +13,6 @@ from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
 
 @pytest.fixture
-def mapper():
-    return StrawberrySQLAlchemyMapper()
-
-
-@pytest.fixture
 def polymorphic_employee(base):
     class Employee(base):
         __tablename__ = "employee"
@@ -326,8 +321,7 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     @strawberry.type
     class Query:
         @strawberry.field
-        def departments(self) -> Department:
-            ...
+        def departments(self) -> Department: ...
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)

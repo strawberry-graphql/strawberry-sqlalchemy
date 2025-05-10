@@ -150,13 +150,11 @@ class StrawberrySQLAlchemyType(Generic[BaseModelType]):
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self:
-        ...
+    def from_type(cls, type_: type, *, strict: Literal[True]) -> Self: ...
 
     @overload
     @classmethod
-    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]:
-        ...
+    def from_type(cls, type_: type, *, strict: bool = False) -> Optional[Self]: ...
 
     @classmethod
     def from_type(
@@ -498,7 +496,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
 
         async def resolve(self, info: Info):
-            instance_state = cast(InstanceState, inspect(self))
+            instance_state = cast("InstanceState", inspect(self))
             if relationship.key not in instance_state.unloaded:
                 related_objects = getattr(self, relationship.key)
             else:
@@ -574,15 +572,18 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             in_between_objects = await in_between_resolver(self, info)
             if in_between_objects is None:
                 if is_multiple:
-                    return connection_type(
-                        edges=[], 
-                        page_info=relay.PageInfo(
-                            has_next_page=False,
-                            has_previous_page=False,
-                            start_cursor=None,
-                            end_cursor=None,
-                        ))
+                    breakpoint()  # noqa: E702  # type: ignore[comment]
+                    return connection_type(edges=[])
+                    # return connection_type(
+                    #     edges=[],
+                    #     page_info=relay.PageInfo(
+                    #         has_next_page=False,
+                    #         has_previous_page=False,
+                    #         start_cursor=None,
+                    #         end_cursor=None,
+                    #     ))  # noqa: E501  # type: ignore[comment]
                 else:
+                    breakpoint()  # noqa: E702  # type: ignore[comment]
                     return None
             if descriptor.value_attr in in_between_mapper.relationships:
                 assert end_relationship_resolver is not None
@@ -601,15 +602,23 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     outputs = await end_relationship_resolver(in_between_objects, info)
                 if not isinstance(outputs, collections.abc.Iterable):
                     return outputs
-                edges = [edge_type(node=obj, cursor=None) for obj in outputs]
+                # TODO: add this logic into a function
+                edges = [
+                    edge_type.resolve_edge(
+                        related_object,
+                        cursor=i,
+                    )
+                    for i, related_object in enumerate(outputs)
+                ]
                 return connection_type(
                     edges=edges,
                     page_info=relay.PageInfo(
-                        has_previous_page=False,
                         has_next_page=False,
+                        has_previous_page=False,
                         start_cursor=edges[0].cursor if edges else None,
                         end_cursor=edges[-1].cursor if edges else None,
-                    ))
+                    ),
+                )
             else:
                 assert descriptor.value_attr in in_between_mapper.columns
                 if isinstance(in_between_objects, collections.abc.Iterable):
@@ -682,7 +691,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             type_.__annotations__ = {
                 k: v for k, v in old_annotations.items() if is_private(v)
             }
-            mapper: Mapper = cast(Mapper, inspect(model))
+            mapper: Mapper = cast("Mapper", inspect(model))
             generated_field_keys = []
 
             excluded_keys = getattr(type_, "__exclude__", [])
@@ -721,7 +730,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     generated_field_keys,
                 )
                 sqlalchemy_field = cast(
-                    StrawberryField,
+                    "StrawberryField",
                     field(
                         resolver=self.connection_resolver_for(
                             relationship,
@@ -765,7 +774,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         type_, key, strawberry_type, generated_field_keys
                     )
                     sqlalchemy_field = cast(
-                        StrawberryField,
+                        "StrawberryField",
                         field(
                             resolver=self.association_proxy_resolver_for(
                                 mapper,
@@ -836,7 +845,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            types.MethodType(cast(classmethod, meth).__func__, type_),
+                            types.MethodType(cast("classmethod", meth).__func__, type_),
                         )
 
             # need to make fields that are already in the type

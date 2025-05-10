@@ -15,11 +15,14 @@ import socket
 import pytest
 import sqlalchemy
 from packaging import version
-from sqlalchemy import orm
+from sqlalchemy import Column, ForeignKey, Integer, String, orm
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext import asyncio
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
+from sqlalchemy.orm import relationship
+from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 from testing.postgresql import Postgresql, PostgresqlFactory
 
 SQLA_VERSION = version.parse(sqlalchemy.__version__)
@@ -111,3 +114,70 @@ def async_sessionmaker(async_engine):
 @pytest.fixture
 def base():
     return orm.declarative_base()
+
+
+@pytest.fixture
+def mapper():
+    return StrawberrySQLAlchemyMapper()
+
+
+@pytest.fixture
+def building_department_employee_tables_with_association_proxy_and_normal_relationship(
+    base,
+):
+    class Building(base):
+        __tablename__ = "buildings"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+
+        departments = relationship("Department", back_populates="building")
+        employees = association_proxy("departments", "employees")
+
+    class Department(base):
+        __tablename__ = "departments"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+        building_id = Column(Integer, ForeignKey("buildings.id"))
+
+        building = relationship("Building", back_populates="departments")
+        employees = relationship("Employee", back_populates="department")
+
+    class Employee(base):
+        __tablename__ = "employees"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+        department_id = Column(Integer, ForeignKey("departments.id"))
+
+        department = relationship("Department", back_populates="employees")
+
+    return Building, Department, Employee
+
+
+@pytest.fixture
+def building_department_employee_tables_with_only_proxy_association(base):
+    class Building(base):
+        __tablename__ = "buildings"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+
+        departments = relationship("Department", back_populates="building")
+        employees = association_proxy("departments", "employees")
+
+    class Department(base):
+        __tablename__ = "departments"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+        building_id = Column(Integer, ForeignKey("buildings.id"))
+
+        building = relationship("Building", back_populates="departments")
+        employees = relationship("Employee", back_populates="department")
+
+    class Employee(base):
+        __tablename__ = "employees"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+        department_id = Column(Integer, ForeignKey("departments.id"))
+
+        department = relationship("Department", back_populates="employees")
+
+    return Building, Department, Employee
