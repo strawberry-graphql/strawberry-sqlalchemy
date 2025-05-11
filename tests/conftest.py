@@ -30,7 +30,8 @@ SQLA2 = SQLA_VERSION >= version.parse("2.0")
 
 
 logging.basicConfig()
-log = logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+log = logging.getLogger("sqlalchemy.engine")
+log.setLevel(logging.INFO)
 
 
 def _pick_unused_port():
