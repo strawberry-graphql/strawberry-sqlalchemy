@@ -69,14 +69,12 @@ from sqlalchemy.orm import (
     Mapper,
     RelationshipProperty,
 )
-from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.sql.type_api import TypeEngine
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
 from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.types import Info
 from strawberry.types.base import WithStrawberryObjectDefinition, get_object_definition
-from strawberry.types.field import StrawberryField
 from strawberry.types.lazy_type import LazyType
 from strawberry.types.private import is_private
 
@@ -97,12 +95,14 @@ from strawberry_sqlalchemy_mapper.relay import (
 from strawberry_sqlalchemy_mapper.scalars import BigInt
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm.state import InstanceState
     from sqlalchemy.sql.expression import ColumnElement
+    from strawberry.types.field import StrawberryField
 
 BaseModelType = TypeVar("BaseModelType")
 
 SkipTypeSentinelT = NewType("SkipTypeSentinelT", object)
-SkipTypeSentinel = cast(SkipTypeSentinelT, sentinel.create("SkipTypeSentinel"))
+SkipTypeSentinel = cast("SkipTypeSentinelT", sentinel.create("SkipTypeSentinel"))
 
 #: Set on generated types to the original type handed to the decorator
 _ORIGINAL_TYPE_KEY = "_original_type"
@@ -465,27 +465,33 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         edge_type = self._edge_type_for(type_name)
 
         async def wrapper(self, info: Info):
-            # TODO: Add pagination support to dataloader resolvers
-            edges = [
-                edge_type.resolve_edge(
-                    related_object,
-                    cursor=i,
-                )
-                for i, related_object in enumerate(await resolver(self, info))
-            ]
-            return connection_type(
-                edges=edges,
-                page_info=relay.PageInfo(
-                    has_next_page=False,
-                    has_previous_page=False,
-                    start_cursor=edges[0].cursor if edges else None,
-                    end_cursor=edges[-1].cursor if edges else None,
-                ),
+            return StrawberrySQLAlchemyMapper._resolve_connection_edges(
+                await resolver(self, info), edge_type, connection_type
             )
 
         setattr(wrapper, _IS_GENERATED_RESOLVER_KEY, True)
 
         return wrapper
+
+    @staticmethod
+    def _resolve_connection_edges(related_objects, edge_type, connection_type):
+        # TODO: Add pagination support to dataloader resolvers
+        edges = [
+            edge_type.resolve_edge(
+                related_object,
+                cursor=i,
+            )
+            for i, related_object in enumerate(related_objects)
+        ]
+        return connection_type(
+            edges=edges,
+            page_info=relay.PageInfo(
+                has_next_page=False,
+                has_previous_page=False,
+                start_cursor=edges[0].cursor if edges else None,
+                end_cursor=edges[-1].cursor if edges else None,
+            ),
+        )
 
     def relationship_resolver_for(
         self, relationship: RelationshipProperty
@@ -496,7 +502,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
 
         async def resolve(self, info: Info):
-            instance_state = cast(InstanceState, inspect(self))
+            instance_state = cast("InstanceState", inspect(self))
             if relationship.key not in instance_state.unloaded:
                 related_objects = getattr(self, relationship.key)
             else:
@@ -579,7 +585,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                             has_previous_page=False,
                             start_cursor=None,
                             end_cursor=None,
-                        ))  
+                        ),
+                    )
                 else:
                     return None
             if descriptor.value_attr in in_between_mapper.relationships:
@@ -599,22 +606,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     outputs = await end_relationship_resolver(in_between_objects, info)
                 if not isinstance(outputs, collections.abc.Iterable):
                     return outputs
-                # TODO: add this logic into a function
-                edges = [
-                    edge_type.resolve_edge(
-                        related_object,
-                        cursor=i,
-                    )
-                    for i, related_object in enumerate(outputs)
-                ]
-                return connection_type(
-                    edges=edges,
-                    page_info=relay.PageInfo(
-                        has_next_page=False,
-                        has_previous_page=False,
-                        start_cursor=edges[0].cursor if edges else None,
-                        end_cursor=edges[-1].cursor if edges else None,
-                    ),
+                return StrawberrySQLAlchemyMapper._resolve_connection_edges(
+                    outputs, edge_type, connection_type
                 )
             else:
                 assert descriptor.value_attr in in_between_mapper.columns
@@ -809,7 +802,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             # ignore inherited `is_type_of`
             if "is_type_of" not in type_.__dict__:
                 type_.is_type_of = (
-                    lambda obj, info: type(obj) == model or type(obj) == type_
+                    lambda obj, info: type(obj) == model  # noqa: E721
+                    or type(obj) == type_  # noqa: E721
                 )
 
             # Default querying methods for relay
