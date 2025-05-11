@@ -3,15 +3,13 @@ from typing import List
 
 import pytest
 import strawberry
-from strawberry import relay
 from sqlalchemy import Column, ForeignKey, Integer, String, select
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
+from strawberry import relay
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader, connection
 from strawberry_sqlalchemy_mapper.exc import UnsupportedAssociationProxyTarget
 from strawberry_sqlalchemy_mapper.relay import KeysetConnection
-
-
 
 
 @pytest.fixture
@@ -68,11 +66,11 @@ def test_relationships_schema_with_association_proxy_should_not_raise_Unsupporte
     @mapper.type(EmployeeModel)
     class Employee:
         pass
-    
+
     @mapper.type(DepartmentModel)
     class Department:
         __exclude__ = ["password_hash", "employee_names"]
-    
+
     @strawberry.type
     class Query:
         @strawberry.field
@@ -129,9 +127,6 @@ def test_relationships_schema_with_association_proxy_should_not_raise_Unsupporte
     }
     '''
     assert str(schema) == textwrap.dedent(expected).strip()
-
-
-    
 
 
 def test_relationships_schema_with_association_proxy(
@@ -256,7 +251,9 @@ def create_test_data(
     department2.employees.extend([employee2])
     building.departments.extend([department1, department2])
 
-    session.add_all([building, building2, department1, department2, employee1, employee2])
+    session.add_all(
+        [building, building2, department1, department2, employee1, employee2]
+    )
     session.commit()
     return building, building2, department1, department2, employee1, employee2
 
@@ -327,9 +324,11 @@ async def test_query_with_association_proxy_schema(
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    building, building2, department1, department2, employee1, employee2 = create_test_data(
-        session,
-        building_department_employee_tables_with_association_proxy,
+    building, building2, department1, department2, employee1, employee2 = (
+        create_test_data(
+            session,
+            building_department_employee_tables_with_association_proxy,
+        )
     )
 
     query = query_to_test_association_proxy()
@@ -391,7 +390,7 @@ async def test_query_with_association_proxy_schema(
                     },
                     "edges": [],
                 },
-            }
+            },
         ]
     }
 
@@ -473,19 +472,22 @@ async def test_query_with_association_proxy_schema_keyset_connection(
 
     @strawberry.type
     class Query:
-        buildings: KeysetConnection[Building] = connection(sessionmaker=sessionmaker,
+        buildings: KeysetConnection[Building] = connection(
+            sessionmaker=sessionmaker,
             keyset=(BuildingModel.name,),
         )
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    building, building2, department1, department2, employee1, employee2 = create_test_data(
-        session,
-        building_department_employee_tables_with_association_proxy,
+    building, building2, department1, department2, employee1, employee2 = (
+        create_test_data(
+            session,
+            building_department_employee_tables_with_association_proxy,
+        )
     )
 
-    query = query = """\
+    query = """
     query Buildings($first: Int, $after: String) {
       buildings(first: $first, after: $after) {
         pageInfo {
@@ -531,73 +533,73 @@ async def test_query_with_association_proxy_schema_keyset_connection(
 
     assert result.errors is None
     assert result.data == {
-      "buildings": {
-      "pageInfo": {
-        "hasNextPage": False,
-        "hasPreviousPage": False,
-        "startCursor": f">s:{building.name}",
-        "endCursor": f">s:{building2.name}"
-      },
-      "edges": [
-        {
-        "cursor": f">s:{building.name}",
-        "node": {
-          "id": "QnVpbGRpbmc6MQ==",
-          "name": building.name,
-          "employees": {
-          "pageInfo": {
-            "hasNextPage": False,
-            "hasPreviousPage": False,
-            "startCursor": "YXJyYXljb25uZWN0aW9uOjA=",
-            "endCursor": "YXJyYXljb25uZWN0aW9uOjE="
-          },
-          "edges": [
-            {
-            "cursor": "YXJyYXljb25uZWN0aW9uOjA=",
-            "node": {
-              "id": employee1.id,
-              "name": employee1.name,
-              "department": {
-              "id": department1.id,
-              "name": department1.name
-              }
-            }
+        "buildings": {
+            "pageInfo": {
+                "hasNextPage": False,
+                "hasPreviousPage": False,
+                "startCursor": f">s:{building.name}",
+                "endCursor": f">s:{building2.name}",
             },
-            {
-            "cursor": "YXJyYXljb25uZWN0aW9uOjE=",
-            "node": {
-              "id": employee2.id,
-              "name": employee2.name,
-              "department": {
-              "id": department2.id,
-              "name": department2.name
-              }
-            }
-            }
-          ]
-          }
+            "edges": [
+                {
+                    "cursor": f">s:{building.name}",
+                    "node": {
+                        "id": "QnVpbGRpbmc6MQ==",
+                        "name": building.name,
+                        "employees": {
+                            "pageInfo": {
+                                "hasNextPage": False,
+                                "hasPreviousPage": False,
+                                "startCursor": "YXJyYXljb25uZWN0aW9uOjA=",
+                                "endCursor": "YXJyYXljb25uZWN0aW9uOjE=",
+                            },
+                            "edges": [
+                                {
+                                    "cursor": "YXJyYXljb25uZWN0aW9uOjA=",
+                                    "node": {
+                                        "id": employee1.id,
+                                        "name": employee1.name,
+                                        "department": {
+                                            "id": department1.id,
+                                            "name": department1.name,
+                                        },
+                                    },
+                                },
+                                {
+                                    "cursor": "YXJyYXljb25uZWN0aW9uOjE=",
+                                    "node": {
+                                        "id": employee2.id,
+                                        "name": employee2.name,
+                                        "department": {
+                                            "id": department2.id,
+                                            "name": department2.name,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                },
+                {
+                    "cursor": f">s:{building2.name}",
+                    "node": {
+                        "id": "QnVpbGRpbmc6Ng==",
+                        "name": building2.name,
+                        "employees": {
+                            "pageInfo": {
+                                "hasNextPage": False,
+                                "hasPreviousPage": False,
+                                "startCursor": None,
+                                "endCursor": None,
+                            },
+                            "edges": [],
+                        },
+                    },
+                },
+            ],
         }
-        },
-        {
-        "cursor": f">s:{building2.name}",
-        "node": {
-          "id": "QnVpbGRpbmc6Ng==",
-          "name": building2.name,
-          "employees": {
-          "pageInfo": {
-            "hasNextPage": False,
-            "hasPreviousPage": False,
-            "startCursor": None,
-            "endCursor": None
-          },
-          "edges": []
-          }
-        }
-        }
-      ]
-      }
     }
-    
+
     result = await schema.execute(
         query,
         {"first": 1},
@@ -605,53 +607,53 @@ async def test_query_with_association_proxy_schema_keyset_connection(
     )
     assert result.errors is None
     assert result.data == {
-      "buildings": {
-      "pageInfo": {
-        "hasNextPage": True,
-        "hasPreviousPage": False,
-        "startCursor": f">s:{building.name}",
-        "endCursor": f">s:{building.name}"
-      },
-      "edges": [
-        {
-        "cursor": f">s:{building.name}",
-        "node": {
-          "id": "QnVpbGRpbmc6MQ==",
-          "name": building.name,
-          "employees": {
-          "pageInfo": {
-            "hasNextPage": False,
-            "hasPreviousPage": False,
-            "startCursor": "YXJyYXljb25uZWN0aW9uOjA=",
-            "endCursor": "YXJyYXljb25uZWN0aW9uOjE="
-          },
-          "edges": [
-            {
-            "cursor": "YXJyYXljb25uZWN0aW9uOjA=",
-            "node": {
-              "id": employee1.id,
-              "name": employee1.name,
-              "department": {
-              "id": department1.id,
-              "name": department1.name
-              }
-            }
+        "buildings": {
+            "pageInfo": {
+                "hasNextPage": True,
+                "hasPreviousPage": False,
+                "startCursor": f">s:{building.name}",
+                "endCursor": f">s:{building.name}",
             },
-            {
-            "cursor": "YXJyYXljb25uZWN0aW9uOjE=",
-            "node": {
-              "id": employee2.id,
-              "name": employee2.name,
-              "department": {
-              "id": department2.id,
-              "name": department2.name
-              }
-            }
-            }
-          ]
-          }
+            "edges": [
+                {
+                    "cursor": f">s:{building.name}",
+                    "node": {
+                        "id": "QnVpbGRpbmc6MQ==",
+                        "name": building.name,
+                        "employees": {
+                            "pageInfo": {
+                                "hasNextPage": False,
+                                "hasPreviousPage": False,
+                                "startCursor": "YXJyYXljb25uZWN0aW9uOjA=",
+                                "endCursor": "YXJyYXljb25uZWN0aW9uOjE=",
+                            },
+                            "edges": [
+                                {
+                                    "cursor": "YXJyYXljb25uZWN0aW9uOjA=",
+                                    "node": {
+                                        "id": employee1.id,
+                                        "name": employee1.name,
+                                        "department": {
+                                            "id": department1.id,
+                                            "name": department1.name,
+                                        },
+                                    },
+                                },
+                                {
+                                    "cursor": "YXJyYXljb25uZWN0aW9uOjE=",
+                                    "node": {
+                                        "id": employee2.id,
+                                        "name": employee2.name,
+                                        "department": {
+                                            "id": department2.id,
+                                            "name": department2.name,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                }
+            ],
         }
-        }
-      ]
-      }
     }
