@@ -11,9 +11,11 @@ from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader, connection
 from strawberry_sqlalchemy_mapper.exc import UnsupportedAssociationProxyTarget
 from strawberry_sqlalchemy_mapper.relay import KeysetConnection
 
+# === TABLES FIXTURES ===
+
 
 @pytest.fixture
-def employee_and_department_tables_with_wrong_association_proxy(base):
+def tables_with_wrong_association_proxy(base):
     class Department(base):
         __tablename__ = "department"
         id = Column(Integer, autoincrement=True, primary_key=True)
@@ -31,13 +33,89 @@ def employee_and_department_tables_with_wrong_association_proxy(base):
     return Employee, Department
 
 
+@pytest.fixture
+def tables_with_association_proxy(
+    base,
+):
+    class Building(base):
+        __tablename__ = "buildings"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+
+        departments = relationship("Department", back_populates="building")
+        employees = association_proxy("departments", "employees")
+
+    class Department(base):
+        __tablename__ = "departments"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+        building_id = Column(Integer, ForeignKey("buildings.id"))
+
+        building = relationship("Building", back_populates="departments")
+        employees = relationship("Employee", back_populates="department")
+
+    class Employee(base):
+        __tablename__ = "employees"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+        department_id = Column(Integer, ForeignKey("departments.id"))
+
+        department = relationship("Department", back_populates="employees")
+
+    return Building, Department, Employee
+
+
+@pytest.fixture
+def tables_with_association_proxy_and_nullable_relationship(
+    base,
+):
+    class Building(base):
+        __tablename__ = "buildings"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+
+        department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+        department = relationship(
+            "Department",
+            back_populates="building",
+            foreign_keys=[department_id],
+            uselist=False,
+        )
+
+        employees = association_proxy("department", "employees")
+
+    class Department(base):
+        __tablename__ = "departments"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+
+        building = relationship(
+            "Building",
+            back_populates="department",
+            foreign_keys=[Building.department_id],
+        )
+
+        employees = relationship("Employee", back_populates="department")
+
+    class Employee(base):
+        __tablename__ = "employees"
+        id = Column(Integer, primary_key=True)
+        name = Column(String, nullable=False)
+        department_id = Column(Integer, ForeignKey("departments.id"))
+
+        department = relationship("Department", back_populates="employees")
+
+    return Building, Department, Employee
+
+
+# === TESTS ===
+
+
 def test_relationships_schema_with_association_proxy_should_raise_UnsupportedAssociationProxyTarget(
-    employee_and_department_tables_with_wrong_association_proxy, mapper
+    tables_with_wrong_association_proxy, mapper
 ):
 
-    EmployeeModel, DepartmentModel = (
-        employee_and_department_tables_with_wrong_association_proxy
-    )
+    EmployeeModel, DepartmentModel = tables_with_wrong_association_proxy
 
     @mapper.type(EmployeeModel)
     class Employee:
@@ -56,12 +134,10 @@ def test_relationships_schema_with_association_proxy_should_raise_UnsupportedAss
 
 
 def test_relationships_schema_with_association_proxy_should_not_raise_UnsupportedAssociationProxyTarget_if_excluded(
-    employee_and_department_tables_with_wrong_association_proxy, mapper
+    tables_with_wrong_association_proxy, mapper
 ):
 
-    EmployeeModel, DepartmentModel = (
-        employee_and_department_tables_with_wrong_association_proxy
-    )
+    EmployeeModel, DepartmentModel = tables_with_wrong_association_proxy
 
     @mapper.type(EmployeeModel)
     class Employee:
@@ -79,7 +155,274 @@ def test_relationships_schema_with_association_proxy_should_not_raise_Unsupporte
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    expected = '''
+    expected = (
+        get_test_relationships_schema_with_association_proxy_should_not_raise_UnsupportedAssociationProxyTarget_if_excluded_expected_shema()
+    )
+    assert str(schema) == textwrap.dedent(expected).strip()
+
+
+def test_relationships_schema_with_association_proxy(
+    tables_with_association_proxy,
+    mapper,
+):
+
+    BuildingModel, DepartmentModel, EmployeeModel = tables_with_association_proxy
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def buildings(self) -> Building: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    expected = get_test_relationships_schema_with_association_proxy_expected_schema()
+    assert str(schema) == textwrap.dedent(expected).strip()
+
+
+async def test_query_with_association_proxy_schema(
+    base,
+    engine,
+    sessionmaker,
+    tables_with_association_proxy,
+    mapper,
+):
+    base.metadata.create_all(engine)
+    session = sessionmaker()
+
+    BuildingModel, DepartmentModel, EmployeeModel = tables_with_association_proxy
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def buildings(self) -> List[Building]:
+            result = session.scalars(select(BuildingModel))
+            return result.all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    test_data = create_test_data(
+        session,
+        tables_with_association_proxy,
+    )
+
+    query = query_to_test_association_proxy()
+
+    result = await schema.execute(
+        query,
+        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
+    )
+    session.close()
+
+    assert result.errors is None
+    assert result.data == get_test_query_with_association_proxy_schema_expected_result(
+        *test_data
+    )
+
+
+async def test_query_with_association_proxy_schema_with_empty_database(
+    base,
+    engine,
+    sessionmaker,
+    tables_with_association_proxy,
+    mapper,
+):
+    base.metadata.create_all(engine)
+    session = sessionmaker()
+
+    BuildingModel, DepartmentModel, EmployeeModel = tables_with_association_proxy
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def buildings(self) -> List[Building]:
+            result = session.scalars(select(BuildingModel))
+            return result.all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    query = query_to_test_association_proxy()
+
+    result = await schema.execute(
+        query,
+        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
+    )
+    session.close()
+
+    assert result.errors is None
+    assert result.data == {"buildings": []}
+
+
+async def test_query_with_association_proxy_schema_keyset_connection(
+    base,
+    engine,
+    sessionmaker,
+    tables_with_association_proxy,
+    mapper,
+):
+    base.metadata.create_all(engine)
+    session = sessionmaker()
+
+    BuildingModel, DepartmentModel, EmployeeModel = tables_with_association_proxy
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building(relay.Node):
+        id: relay.NodeID[int]
+        name: str
+
+    @strawberry.type
+    class Query:
+        buildings: KeysetConnection[Building] = connection(
+            sessionmaker=sessionmaker,
+            keyset=(BuildingModel.name,),
+        )
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    test_data = create_test_data(
+        session,
+        tables_with_association_proxy,
+    )
+
+    query = get_test_query_with_association_proxy_schema_keyset_connection_query()
+
+    result = await schema.execute(
+        query,
+        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
+    )
+
+    assert result.errors is None
+    assert (
+        result.data
+        == get_test_query_with_association_proxy_schema_keyset_connection_expected_result(
+            *test_data
+        )
+    )
+
+    result = await schema.execute(
+        query,
+        {"first": 1},
+        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
+    )
+    assert result.errors is None
+    assert (
+        result.data
+        == get_test_query_with_association_proxy_schema_keyset_connection_expected_result_with_first(
+            *test_data
+        )
+    )
+
+
+async def test_query_with_association_proxy_schema_with_nullable_relationship(
+    base,
+    engine,
+    sessionmaker,
+    tables_with_association_proxy_and_nullable_relationship,
+    mapper,
+):
+    base.metadata.create_all(engine)
+    session = sessionmaker()
+
+    BuildingModel, DepartmentModel, EmployeeModel = (
+        tables_with_association_proxy_and_nullable_relationship
+    )
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def buildings(self) -> List[Building]:
+            result = session.scalars(select(BuildingModel))
+            return result.all()
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    test_data = create_test_data_with_nullable_relationship(
+        session,
+        tables_with_association_proxy_and_nullable_relationship,
+    )
+
+    query = query_to_test_association_proxy()
+
+    result = await schema.execute(
+        query,
+        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
+    )
+    session.close()
+
+    assert result.errors is None
+    assert (
+        result.data
+        == get_test_query_with_association_proxy_schema_with_nullable_relationship_expected_result(
+            *test_data
+        )
+    )
+
+
+# === HELPERS ===
+
+
+def get_test_relationships_schema_with_association_proxy_should_not_raise_UnsupportedAssociationProxyTarget_if_excluded_expected_shema():
+    return '''
     type Department {
       id: Int!
       name: String!
@@ -126,39 +469,10 @@ def test_relationships_schema_with_association_proxy_should_not_raise_Unsupporte
       departments: Department!
     }
     '''
-    assert str(schema) == textwrap.dedent(expected).strip()
 
 
-def test_relationships_schema_with_association_proxy(
-    building_department_employee_tables_with_association_proxy,
-    mapper,
-):
-
-    BuildingModel, DepartmentModel, EmployeeModel = (
-        building_department_employee_tables_with_association_proxy
-    )
-
-    @mapper.type(EmployeeModel)
-    class Employee:
-        pass
-
-    @mapper.type(DepartmentModel)
-    class Department:
-        pass
-
-    @mapper.type(BuildingModel)
-    class Building:
-        pass
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        def buildings(self) -> Building: ...
-
-    mapper.finalize()
-    schema = strawberry.Schema(query=Query)
-
-    expected = '''
+def get_test_relationships_schema_with_association_proxy_expected_schema():
+    return '''
 type Building {
   id: Int!
   name: String!
@@ -228,7 +542,6 @@ type Query {
   buildings: Building!
 }
     '''
-    assert str(schema) == textwrap.dedent(expected).strip()
 
 
 def create_test_data(
@@ -237,7 +550,7 @@ def create_test_data(
 ):
     BuildingModel, DepartmentModel, EmployeeModel = building_department_employee_tables
 
-    building = BuildingModel(id=1, name="Main Office")
+    building1 = BuildingModel(id=1, name="Main Office")
     building2 = BuildingModel(id=6, name="New Office")
     department1 = DepartmentModel(id=2, name="Engineering")
     department2 = DepartmentModel(id=3, name="Human Resources")
@@ -247,13 +560,13 @@ def create_test_data(
     # Establish relationships
     department1.employees.extend([employee1])
     department2.employees.extend([employee2])
-    building.departments.extend([department1, department2])
+    building1.departments.extend([department1, department2])
 
     session.add_all(
-        [building, building2, department1, department2, employee1, employee2]
+        [building1, building2, department1, department2, employee1, employee2]
     )
     session.commit()
-    return building, building2, department1, department2, employee1, employee2
+    return [building1, building2, department1, department2, employee1, employee2]
 
 
 def query_to_test_association_proxy():
@@ -286,95 +599,14 @@ def query_to_test_association_proxy():
     """
 
 
-@pytest.fixture
-def building_department_employee_tables_with_association_proxy(
-    base,
+def get_test_query_with_association_proxy_schema_expected_result(
+    building1, building2, department1, department2, employee1, employee2
 ):
-    class Building(base):
-        __tablename__ = "buildings"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-
-        departments = relationship("Department", back_populates="building")
-        employees = association_proxy("departments", "employees")
-
-    class Department(base):
-        __tablename__ = "departments"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-        building_id = Column(Integer, ForeignKey("buildings.id"))
-
-        building = relationship("Building", back_populates="departments")
-        employees = relationship("Employee", back_populates="department")
-
-    class Employee(base):
-        __tablename__ = "employees"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-        department_id = Column(Integer, ForeignKey("departments.id"))
-
-        department = relationship("Department", back_populates="employees")
-
-    return Building, Department, Employee
-
-
-async def test_query_with_association_proxy_schema(
-    base,
-    engine,
-    sessionmaker,
-    building_department_employee_tables_with_association_proxy,
-    mapper,
-):
-    base.metadata.create_all(engine)
-    session = sessionmaker()
-
-    BuildingModel, DepartmentModel, EmployeeModel = (
-        building_department_employee_tables_with_association_proxy
-    )
-
-    @mapper.type(EmployeeModel)
-    class Employee:
-        pass
-
-    @mapper.type(DepartmentModel)
-    class Department:
-        pass
-
-    @mapper.type(BuildingModel)
-    class Building:
-        pass
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        async def buildings(self) -> List[Building]:
-            result = session.scalars(select(BuildingModel))
-            return result.all()
-
-    mapper.finalize()
-    schema = strawberry.Schema(query=Query)
-
-    building, building2, department1, department2, employee1, employee2 = (
-        create_test_data(
-            session,
-            building_department_employee_tables_with_association_proxy,
-        )
-    )
-
-    query = query_to_test_association_proxy()
-
-    result = await schema.execute(
-        query,
-        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
-    )
-    session.close()
-
-    assert result.errors is None
-    assert result.data == {
+    return {
         "buildings": [
             {
-                "id": building.id,
-                "name": building.name,
+                "id": building1.id,
+                "name": building1.name,
                 "employees": {
                     "pageInfo": {
                         "hasNextPage": False,
@@ -425,99 +657,8 @@ async def test_query_with_association_proxy_schema(
     }
 
 
-async def test_query_with_association_proxy_schema_with_empty_database(
-    base,
-    engine,
-    sessionmaker,
-    building_department_employee_tables_with_association_proxy,
-    mapper,
-):
-    base.metadata.create_all(engine)
-    session = sessionmaker()
-
-    BuildingModel, DepartmentModel, EmployeeModel = (
-        building_department_employee_tables_with_association_proxy
-    )
-
-    @mapper.type(EmployeeModel)
-    class Employee:
-        pass
-
-    @mapper.type(DepartmentModel)
-    class Department:
-        pass
-
-    @mapper.type(BuildingModel)
-    class Building:
-        pass
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        async def buildings(self) -> List[Building]:
-            result = session.scalars(select(BuildingModel))
-            return result.all()
-
-    mapper.finalize()
-    schema = strawberry.Schema(query=Query)
-
-    query = query_to_test_association_proxy()
-
-    result = await schema.execute(
-        query,
-        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
-    )
-    session.close()
-
-    assert result.errors is None
-    assert result.data == {"buildings": []}
-
-
-async def test_query_with_association_proxy_schema_keyset_connection(
-    base,
-    engine,
-    sessionmaker,
-    building_department_employee_tables_with_association_proxy,
-    mapper,
-):
-    base.metadata.create_all(engine)
-    session = sessionmaker()
-
-    BuildingModel, DepartmentModel, EmployeeModel = (
-        building_department_employee_tables_with_association_proxy
-    )
-
-    @mapper.type(EmployeeModel)
-    class Employee:
-        pass
-
-    @mapper.type(DepartmentModel)
-    class Department:
-        pass
-
-    @mapper.type(BuildingModel)
-    class Building(relay.Node):
-        id: relay.NodeID[int]
-        name: str
-
-    @strawberry.type
-    class Query:
-        buildings: KeysetConnection[Building] = connection(
-            sessionmaker=sessionmaker,
-            keyset=(BuildingModel.name,),
-        )
-
-    mapper.finalize()
-    schema = strawberry.Schema(query=Query)
-
-    building, building2, department1, department2, employee1, employee2 = (
-        create_test_data(
-            session,
-            building_department_employee_tables_with_association_proxy,
-        )
-    )
-
-    query = """
+def get_test_query_with_association_proxy_schema_keyset_connection_query():
+    return """
     query Buildings($first: Int, $after: String) {
       buildings(first: $first, after: $after) {
         pageInfo {
@@ -556,26 +697,24 @@ async def test_query_with_association_proxy_schema_keyset_connection(
     }
     """
 
-    result = await schema.execute(
-        query,
-        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
-    )
 
-    assert result.errors is None
-    assert result.data == {
+def get_test_query_with_association_proxy_schema_keyset_connection_expected_result(
+    building1, building2, department1, department2, employee1, employee2
+):
+    return {
         "buildings": {
             "pageInfo": {
                 "hasNextPage": False,
                 "hasPreviousPage": False,
-                "startCursor": f">s:{building.name}",
+                "startCursor": f">s:{building1.name}",
                 "endCursor": f">s:{building2.name}",
             },
             "edges": [
                 {
-                    "cursor": f">s:{building.name}",
+                    "cursor": f">s:{building1.name}",
                     "node": {
                         "id": "QnVpbGRpbmc6MQ==",
-                        "name": building.name,
+                        "name": building1.name,
                         "employees": {
                             "pageInfo": {
                                 "hasNextPage": False,
@@ -630,26 +769,24 @@ async def test_query_with_association_proxy_schema_keyset_connection(
         }
     }
 
-    result = await schema.execute(
-        query,
-        {"first": 1},
-        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
-    )
-    assert result.errors is None
-    assert result.data == {
+
+def get_test_query_with_association_proxy_schema_keyset_connection_expected_result_with_first(
+    building1, building2, department1, department2, employee1, employee2
+):
+    return {
         "buildings": {
             "pageInfo": {
                 "hasNextPage": True,
                 "hasPreviousPage": False,
-                "startCursor": f">s:{building.name}",
-                "endCursor": f">s:{building.name}",
+                "startCursor": f">s:{building1.name}",
+                "endCursor": f">s:{building1.name}",
             },
             "edges": [
                 {
-                    "cursor": f">s:{building.name}",
+                    "cursor": f">s:{building1.name}",
                     "node": {
                         "id": "QnVpbGRpbmc6MQ==",
-                        "name": building.name,
+                        "name": building1.name,
                         "employees": {
                             "pageInfo": {
                                 "hasNextPage": False,
@@ -689,56 +826,13 @@ async def test_query_with_association_proxy_schema_keyset_connection(
     }
 
 
-@pytest.fixture
-def building_department_employee_tables_with_association_proxy_and_null_relationship(
-    base,
-):
-    class Building(base):
-        __tablename__ = "buildings"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-
-        department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
-        department = relationship(
-            "Department",
-            back_populates="building",
-            foreign_keys=[department_id],
-            uselist=False,
-        )
-
-        employees = association_proxy("department", "employees")
-
-    class Department(base):
-        __tablename__ = "departments"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-
-        building = relationship(
-            "Building",
-            back_populates="department",
-            foreign_keys=[Building.department_id],
-        )
-
-        employees = relationship("Employee", back_populates="department")
-
-    class Employee(base):
-        __tablename__ = "employees"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-        department_id = Column(Integer, ForeignKey("departments.id"))
-
-        department = relationship("Department", back_populates="employees")
-
-    return Building, Department, Employee
-
-
-def create_test_data_with_null_relationship(
+def create_test_data_with_nullable_relationship(
     session,
     building_department_employee_tables,
 ):
     BuildingModel, DepartmentModel, EmployeeModel = building_department_employee_tables
 
-    building = BuildingModel(id=1, name="Main Office")
+    building1 = BuildingModel(id=1, name="Main Office")
     building2 = BuildingModel(id=6, name="New Office")
     department1 = DepartmentModel(id=2, name="Engineering")
     department2 = DepartmentModel(id=3, name="Human Resources")
@@ -751,69 +845,20 @@ def create_test_data_with_null_relationship(
     building2.department = department2
 
     session.add_all(
-        [building, building2, department1, department2, employee1, employee2]
+        [building1, building2, department1, department2, employee1, employee2]
     )
     session.commit()
-    return building, building2, department1, department2, employee1, employee2
+    return building1, building2, department1, department2, employee1, employee2
 
 
-async def test_query_with_association_proxy_schema_with_null_relationship(
-    base,
-    engine,
-    sessionmaker,
-    building_department_employee_tables_with_association_proxy_and_null_relationship,
-    mapper,
+def get_test_query_with_association_proxy_schema_with_nullable_relationship_expected_result(
+    building1, building2, department1, department2, employee1, employee2
 ):
-    base.metadata.create_all(engine)
-    session = sessionmaker()
-
-    BuildingModel, DepartmentModel, EmployeeModel = (
-        building_department_employee_tables_with_association_proxy_and_null_relationship
-    )
-
-    @mapper.type(EmployeeModel)
-    class Employee:
-        pass
-
-    @mapper.type(DepartmentModel)
-    class Department:
-        pass
-
-    @mapper.type(BuildingModel)
-    class Building:
-        pass
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        async def buildings(self) -> List[Building]:
-            result = session.scalars(select(BuildingModel))
-            return result.all()
-
-    mapper.finalize()
-    schema = strawberry.Schema(query=Query)
-
-    building, building2, department1, department2, employee1, employee2 = (
-        create_test_data_with_null_relationship(
-            session,
-            building_department_employee_tables_with_association_proxy_and_null_relationship,
-        )
-    )
-
-    query = query_to_test_association_proxy()
-
-    result = await schema.execute(
-        query,
-        context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
-    )
-    session.close()
-
-    assert result.errors is None
-    assert result.data == {
+    return {
         "buildings": [
             {
-                "id": building.id,
-                "name": building.name,
+                "id": building1.id,
+                "name": building1.name,
                 "employees": {
                     "pageInfo": {
                         "hasNextPage": False,
