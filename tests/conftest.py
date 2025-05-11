@@ -30,7 +30,7 @@ SQLA2 = SQLA_VERSION >= version.parse("2.0")
 
 
 logging.basicConfig()
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+log = logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 
 def _pick_unused_port():
@@ -58,7 +58,7 @@ if platform.system() == "Windows":
     # Our windows test pipeline doesn't play nice with postgres because
     # Github Actions doesn't support containers on windows.
     # It would probably be nicer if we chcked if postgres is installed
-    logging.info("Skipping postgresql tests on Windows OS")
+    log.info("Skipping postgresql tests on Windows OS")
     SUPPORTED_DBS = []
 else:
     SUPPORTED_DBS = ["postgresql"]  # TODO: Add sqlite and mysql.
@@ -151,4 +151,3 @@ def building_department_employee_tables_with_association_proxy(
         department = relationship("Department", back_populates="employees")
 
     return Building, Department, Employee
-
