@@ -1,3 +1,3 @@
 Release type: patch
 
-Fix association proxy mapping failures due to missing `page_info` or `cursor` arguments in constructors.
+Ensure association proxy resolvers return valid relay connections, including `page_info` and edge `cursor` details, even for empty results.
