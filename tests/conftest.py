@@ -122,7 +122,7 @@ def mapper():
 
 
 @pytest.fixture
-def building_department_employee_tables_with_association_proxy_and_normal_relationship(
+def building_department_employee_tables_with_association_proxy(
     base,
 ):
     class Building(base):
@@ -152,32 +152,3 @@ def building_department_employee_tables_with_association_proxy_and_normal_relati
 
     return Building, Department, Employee
 
-
-@pytest.fixture
-def building_department_employee_tables_with_only_proxy_association(base):
-    class Building(base):
-        __tablename__ = "buildings"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-
-        departments = relationship("Department", back_populates="building")
-        employees = association_proxy("departments", "employees")
-
-    class Department(base):
-        __tablename__ = "departments"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-        building_id = Column(Integer, ForeignKey("buildings.id"))
-
-        building = relationship("Building", back_populates="departments")
-        employees = relationship("Employee", back_populates="department")
-
-    class Employee(base):
-        __tablename__ = "employees"
-        id = Column(Integer, primary_key=True)
-        name = Column(String, nullable=False)
-        department_id = Column(Integer, ForeignKey("departments.id"))
-
-        department = relationship("Department", back_populates="employees")
-
-    return Building, Department, Employee

@@ -10,7 +10,8 @@ class UnsupportedAssociationProxyTarget(Exception):
     def __init__(self, key):
         super().__init__(
             f"Association proxy `{key}` is expected to be of form "
-            + "association_proxy(relationship_name, other relationship name)"
+            + "association_proxy(relationship_name, other relationship name). "
+            + "Ensure it matches the expected form or add this association proxy to __exclude__."
         )
 
 
