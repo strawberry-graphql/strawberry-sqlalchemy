@@ -20,6 +20,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
+from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 from testing.postgresql import Postgresql, PostgresqlFactory
 
 SQLA_VERSION = version.parse(sqlalchemy.__version__)
@@ -27,7 +28,8 @@ SQLA2 = SQLA_VERSION >= version.parse("2.0")
 
 
 logging.basicConfig()
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+log = logging.getLogger("sqlalchemy.engine")
+log.setLevel(logging.INFO)
 
 
 def _pick_unused_port():
@@ -55,7 +57,7 @@ if platform.system() == "Windows":
     # Our windows test pipeline doesn't play nice with postgres because
     # Github Actions doesn't support containers on windows.
     # It would probably be nicer if we chcked if postgres is installed
-    logging.info("Skipping postgresql tests on Windows OS")
+    log.info("Skipping postgresql tests on Windows OS")
     SUPPORTED_DBS = []
 else:
     SUPPORTED_DBS = ["postgresql"]  # TODO: Add sqlite and mysql.
@@ -111,3 +113,8 @@ def async_sessionmaker(async_engine):
 @pytest.fixture
 def base():
     return orm.declarative_base()
+
+
+@pytest.fixture
+def mapper():
+    return StrawberrySQLAlchemyMapper()

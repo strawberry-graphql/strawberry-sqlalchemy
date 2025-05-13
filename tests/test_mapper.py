@@ -13,11 +13,6 @@ from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
 
 @pytest.fixture
-def mapper():
-    return StrawberrySQLAlchemyMapper()
-
-
-@pytest.fixture
 def polymorphic_employee(base):
     class Employee(base):
         __tablename__ = "employee"
@@ -151,9 +146,9 @@ def test_convert_all_columns_to_strawberry_type(mapper):
 
 def test_convert_column_to_strawberry_type(mapper):
     int_column = Column(Integer, nullable=False)
-    assert mapper._convert_column_to_strawberry_type(int_column) == int
+    assert mapper._convert_column_to_strawberry_type(int_column) is int
     string_column = Column(String, nullable=False)
-    assert mapper._convert_column_to_strawberry_type(string_column) == str
+    assert mapper._convert_column_to_strawberry_type(string_column) is str
 
 
 def test_convert_json_column_to_strawberry_type(mapper):
@@ -231,9 +226,9 @@ def test_type_simple(employee_table, mapper):
     assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
     employee_type_fields = mapped_employee_type.__strawberry_definition__.fields
     name = next(iter(filter(lambda f: f.name == "name", employee_type_fields)))
-    assert name.type == str
+    assert name.type is str
     id = next(iter(filter(lambda f: f.name == "id", employee_type_fields)))
-    assert id.type == int
+    assert id.type is int
 
 
 def test_interface_and_type_polymorphic(
@@ -307,9 +302,9 @@ def test_type_relationships(employee_and_department_tables, mapper):
     assert len(mapped_employee_type.__strawberry_definition__.fields) == 4
     employee_type_fields = mapped_employee_type.__strawberry_definition__.fields
     name = next(iter(filter(lambda f: f.name == "department_id", employee_type_fields)))
-    assert type(name.type) == StrawberryOptional
+    assert type(name.type) is StrawberryOptional
     id = next(iter(filter(lambda f: f.name == "department", employee_type_fields)))
-    assert type(id.type) == StrawberryOptional
+    assert type(id.type) is StrawberryOptional
 
 
 def test_relationships_schema(employee_and_department_tables, mapper):
@@ -326,8 +321,7 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     @strawberry.type
     class Query:
         @strawberry.field
-        def departments(self) -> Department:
-            ...
+        def departments(self) -> Department: ...
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
@@ -439,7 +433,7 @@ def test_type_with_directives_and_federation(mapper, employee_table, directives)
 
 
 @pytest.mark.parametrize(
-    "use_federation_value, expected_directives",
+    ("use_federation_value", "expected_directives"),
     [(True, []), (False, ())],
 )
 def test_type_with_default_directives(
