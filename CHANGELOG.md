@@ -1,6 +1,16 @@
 CHANGELOG
 =========
 
+0.6.1 - 2025-05-13
+------------------
+
+Ensure association proxy resolvers return valid relay connections, including `page_info` and edge `cursor` details, even for empty results.
+
+Thanks to https://github.com/tylernisonoff for the original PR.
+
+Contributed by [Luis Gustavo](https://github.com/Ckk3) via [PR #241](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/241/)
+
+
 0.6.0 - 2025-04-25
 ------------------
 
