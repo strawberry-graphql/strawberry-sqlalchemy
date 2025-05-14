@@ -280,7 +280,7 @@ MIT © [strawberry-sqlalchemy-mapper](LICENSE.txt)
 [pypi-badge]: https://img.shields.io/pypi/v/strawberry-sqlalchemy-mapper?color=blue
 [pypi-url]: https://pypi.org/project/strawberry-sqlalchemy-mapper/
 [python-badge]: https://img.shields.io/pypi/pyversions/strawberry-sqlalchemy-mapper
-[downloads-badge]: https://pepy.tech/badge/strawberry-sqlalchemy-mapper
+[downloads-badge]: https://static.pepy.tech/badge/strawberry-sqlalchemy-mapper/month
 [downloads-url]: https://pepy.tech/projects/strawberry-sqlalchemy-mapper
 [ci-badge]: https://img.shields.io/github/actions/workflow/status/strawberry-graphql/strawberry-sqlalchemy/test.yml?branch=main
 [ci-url]: https://github.com/strawberry-graphql/strawberry-sqlalchemy/actions
