@@ -181,7 +181,7 @@ Natively supports the following SQLAlchemy types:
 | `VARCHAR`             | `str`                     |                        |
 | `ARRAY[T]`            | `List[T]`                 |    PostgreSQL array    |
 | `JSON`                | `JSON`                    |    SQLAlchemy JSON     |
-| `Enum`                | `enum.Enum`               |  The Python enum it is mapped to, which should be `@strawberry.enum-decorated`  |
+| `Enum`                | `enum.Enum`               |  The Python enum that the column is mapped to must be decorated with`@strawberry.enum` ([strawberry enum docs][strawberry-enum-docs-url])  |
 
 
 
@@ -304,3 +304,4 @@ MIT © [strawberry-sqlalchemy-mapper](LICENSE.txt)
 [discord-badge]: https://img.shields.io/discord/689806334337482765?label=discord&logo=discord&logoColor=white&style=for-the-badge&color=blue
 [discord-url]: https://discord.gg/ZkRTEJQ
 [strawberry-url]: https://strawberry.rocks/
+[strawberry-enum-docs-url]: https://strawberry.rocks/docs/types/enums#enums
