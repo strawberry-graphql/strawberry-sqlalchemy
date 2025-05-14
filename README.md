@@ -17,7 +17,7 @@ lets you decorate a class declaration and it will automatically generate the nec
 for all columns and relationships (subject to the limitations below) in the given model.
 
 
-- Native support for most of SQLAlchemy's most common types. (See all supported types [here](#limitations))
+- Native support for most of SQLAlchemy's most common types. (See all supported types [here](#supported-types))
 - Extensible to arbitrary custom SQLAlchemy types.
 - Automatic batching of queries, avoiding N+1 queries when getting relationships
 - Support for SQLAlchemy >=1.4.x
