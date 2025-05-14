@@ -14,7 +14,7 @@
         "python.linting.pylintEnabled": false,
         "python.linting.mypyEnabled": true,
         "[python]": {
-          "editor.defaultFormatter": "ms-python.black-formatter"
+          "editor.defaultFormatter": "charliermarsh.ruff"
         },
         "python.formatting.provider": "black",
         "python.formatting.blackPath": "${workspaceFolder}/.venv/bin/black",
@@ -25,7 +25,7 @@
         "ms-python.vscode-pylance",
         "ms-azuretools.vscode-docker",
         "eamodio.gitlens",
-        "ms-python.black-formatter",
+        "charliermarsh.ruff",
         // Dont install these extensions because they conflict with black lint
         "-dbaeumer.vscode-eslint",
         "-ms-python.autopep8"
