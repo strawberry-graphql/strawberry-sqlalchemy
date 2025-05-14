@@ -3,7 +3,7 @@
 
 [![PyPI Version][pypi-badge]][pypi-url]
 ![python][python-badge]
-[![Downloads][downloads-badge]][pypi-url]
+[![Downloads][downloads-badge]][downloads-url]
 [![Test Coverage][coverage-badge]][coverage-url]
 [![CI/CD Status][ci-badge]][ci-url]
 
@@ -241,7 +241,7 @@ If you have a suggestion that would make this better, please fork the repo and c
 4. Push to the Branch (git push origin feature)
 5. Open a Pull Request
 
-For more details on how to contribute, as well as how to setup the project on your local machine, please refer to [the contribuiting docs](CONTRIBUTING.rst)
+For more details on how to contribute, as well as how to setup the project on your local machine, please refer to [the contributing docs](CONTRIBUTING.rst)
 
 
 ### Prerequisites
@@ -280,7 +280,8 @@ MIT © [strawberry-sqlalchemy-mapper](LICENSE.txt)
 [pypi-badge]: https://img.shields.io/pypi/v/strawberry-sqlalchemy-mapper?color=blue
 [pypi-url]: https://pypi.org/project/strawberry-sqlalchemy-mapper/
 [python-badge]: https://img.shields.io/pypi/pyversions/strawberry-sqlalchemy-mapper
-[downloads-badge]: https://img.shields.io/pypi/dm/strawberry-sqlalchemy-mapper.svg?color=blue
+[downloads-badge]: https://pepy.tech/badge/strawberry-sqlalchemy-mapper
+[downloads-url]: https://pepy.tech/projects/strawberry-sqlalchemy-mapper
 [ci-badge]: https://img.shields.io/github/actions/workflow/status/strawberry-graphql/strawberry-sqlalchemy/test.yml?branch=main
 [ci-url]: https://github.com/strawberry-graphql/strawberry-sqlalchemy/actions
 [coverage-badge]: https://codecov.io/gh/strawberry-graphql/strawberry-sqlalchemy/branch/main/graph/badge.svg
