@@ -42,3 +42,4 @@ repos:
     rev: v0.9.3
     hooks:
       - id: taplo-format
+        files: \.(toml)$
