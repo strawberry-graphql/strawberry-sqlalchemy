@@ -74,3 +74,29 @@ def mypy(session: Session) -> None:
         "--config-file", 
         "mypy.ini"
     )
+
+
+@session(name="Black", tags=["lint"])
+def black(session: Session) -> None:
+    session.run_always("poetry", "install", external=True)
+
+    session.run(
+        "black",
+        "--check",
+        "--diff",
+        ".",
+        success_codes=[0, 1]
+    )
+
+
+@session(name="Ruff", tags=["lint"])
+def ruff(session: Session) -> None:
+    session.run_always("poetry", "install", external=True)
+
+    session.run(
+        "ruff",
+        "check",
+        "--diff",
+        ".",
+        success_codes=[0, 1]
+    )
