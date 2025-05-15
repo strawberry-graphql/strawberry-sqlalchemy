@@ -66,7 +66,6 @@ def tests_sqlalchemy_1_4(session: Session) -> None:
     )
 
 
-
 @session(name="Mypy", tags=["lint"])
 def mypy(session: Session) -> None:
     poetry_install_run_always(session)
@@ -76,8 +75,8 @@ def mypy(session: Session) -> None:
         "--install-types",
         "--non-interactive",
         "--cache-dir=.mypy_cache/",
-        "--config-file", 
-        "mypy.ini"
+        "--config-file",
+        "mypy.ini",
     )
 
 
@@ -85,12 +84,7 @@ def mypy(session: Session) -> None:
 def black(session: Session) -> None:
     poetry_install_run_always(session)
 
-    session.run(
-        "black",
-        "--check",
-        "--diff",
-        "."
-    )
+    session.run("black", "--check", "--diff", ".")
 
 
 @session(name="Ruff", tags=["lint"])
