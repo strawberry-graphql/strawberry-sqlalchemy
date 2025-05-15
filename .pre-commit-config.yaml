@@ -6,9 +6,14 @@ repos:
         exclude: ^tests/\w+/snapshots/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.7
+    # Ruff version.
+    rev: v0.11.10
     hooks:
-      - id: ruff
+      # Run the linter.
+      - id: ruff-check
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
         exclude: ^tests/\w+/snapshots/
 
   - repo: https://github.com/patrick91/pre-commit-alex
