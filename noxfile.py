@@ -101,5 +101,6 @@ def ruff(session: Session) -> None:
         "ruff",
         "check",
         "--diff",
-        "."
+        ".",
+        silent=False,
     )
