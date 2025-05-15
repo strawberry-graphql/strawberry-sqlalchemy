@@ -94,7 +94,14 @@ def ruff(session: Session) -> None:
     session.run(
         "ruff",
         "check",
-        "--diff",
+        "--no-fix",
+        ".",
+        silent=False,
+    )
+    session.run(
+        "ruff",
+        "format",
+        "--check",
         ".",
         silent=False,
     )
