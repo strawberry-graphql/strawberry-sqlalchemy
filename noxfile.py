@@ -66,4 +66,11 @@ def tests_sqlalchemy_1_4(session: Session) -> None:
 def mypy(session: Session) -> None:
     session.run_always("poetry", "install", external=True)
 
-    session.run("mypy", "--config-file", "mypy.ini")
+    session.run(
+        "mypy",
+        "--install-types",
+        "--non-interactive",
+        "--cache-dir=.mypy_cache/",
+        "--config-file", 
+        "mypy.ini"
+    )
