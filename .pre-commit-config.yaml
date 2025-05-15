@@ -37,3 +37,8 @@ repos:
     hooks:
       - id: blacken-docs
         args: [--skip-errors]
+
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
