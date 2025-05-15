@@ -89,8 +89,7 @@ def black(session: Session) -> None:
         "black",
         "--check",
         "--diff",
-        ".",
-        success_codes=[0, 1]
+        "."
     )
 
 
@@ -102,6 +101,5 @@ def ruff(session: Session) -> None:
         "ruff",
         "check",
         "--diff",
-        ".",
-        success_codes=[0, 1]
+        "."
     )
