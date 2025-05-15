@@ -883,7 +883,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         ):
             raise InterfaceModelNotPolymorphic(model)
         return self.type(model, make_interface=True)
-
+    def test_without_pre_commit():
+        return "This is a functin without any lint fix, the github action should fail"
     def finalize(self) -> None:
         """
         Finalize right before initializing the strawberry Schema.
