@@ -45,12 +45,10 @@ async def test_query_auto_generated_connection(
     try:
 
         @mapper.type(user_table)
-        class User:
-            ...
+        class User: ...
 
         @mapper.type(group_table)
-        class Group:
-            ...
+        class Group: ...
 
         @strawberry.type
         class Query:

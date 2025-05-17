@@ -18,6 +18,10 @@ COMMON_PYTEST_OPTIONS = [
 ]
 
 
+def poetry_install_run_always(session: Session) -> None:
+    session.run_always("poetry", "install", external=True)
+
+
 @session(python=PYTHON_VERSIONS, name="SQLAlchemy 2.0 Tests", tags=["tests"])
 def tests_sqlalchemy_latest(session: Session) -> None:
     session.run_always(
@@ -31,7 +35,7 @@ def tests_sqlalchemy_latest(session: Session) -> None:
         "wheel",
         external=True,
     )
-    session.run_always("poetry", "install", external=True)
+    poetry_install_run_always(session)
 
     session.run(
         "pytest",
@@ -53,7 +57,7 @@ def tests_sqlalchemy_1_4(session: Session) -> None:
         "wheel",
         external=True,
     )
-    session.run_always("poetry", "install", external=True)
+    poetry_install_run_always(session)
     session._session.install("sqlalchemy~=1.4")
 
     session.run(
@@ -64,6 +68,40 @@ def tests_sqlalchemy_1_4(session: Session) -> None:
 
 @session(name="Mypy", tags=["lint"])
 def mypy(session: Session) -> None:
-    session.run_always("poetry", "install", external=True)
+    poetry_install_run_always(session)
 
-    session.run("mypy", "--config-file", "mypy.ini")
+    session.run(
+        "mypy",
+        "--install-types",
+        "--non-interactive",
+        "--cache-dir=.mypy_cache/",
+        "--config-file",
+        "mypy.ini",
+    )
+
+
+@session(name="Ruff Lint", tags=["lint"])
+def ruff_lint(session: Session) -> None:
+    poetry_install_run_always(session)
+
+    session.run(
+        "ruff",
+        "check",
+        "--no-fix",
+        ".",
+        silent=False,
+    )
+
+
+@session(name="Ruff Format", tags=["format"])
+def ruff_format(session: Session) -> None:
+    poetry_install_run_always(session)
+
+    session.run(
+        "ruff",
+        "format",
+        "--check",
+        "--diff",
+        ".",
+        silent=False,
+    )

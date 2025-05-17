@@ -114,7 +114,6 @@ def tables_with_association_proxy_and_nullable_relationship(
 def test_relationships_schema_with_association_proxy_should_raise_UnsupportedAssociationProxyTarget(
     tables_with_wrong_association_proxy, mapper
 ):
-
     EmployeeModel, DepartmentModel = tables_with_wrong_association_proxy
 
     @mapper.type(EmployeeModel)
@@ -128,15 +127,15 @@ def test_relationships_schema_with_association_proxy_should_raise_UnsupportedAss
             pass
 
     assert (
-        "Association proxy `employee_names` is expected to be of form association_proxy(relationship_name, other relationship name). Ensure it matches the expected form or add this association proxy to __exclude__"
-        in str(exc_info.value)
+        "Association proxy `employee_names` is expected to be of form association_proxy"
+        "(relationship_name, other relationship name). Ensure it matches the expected form or add "
+        "this association proxy to __exclude__" in str(exc_info.value)
     )
 
 
-def test_relationships_schema_with_association_proxy_should_not_raise_UnsupportedAssociationProxyTarget_if_excluded(
+def test_schema_with_assoc_proxy_should_not_raise_exception_if_target_excluded(
     tables_with_wrong_association_proxy, mapper
 ):
-
     EmployeeModel, DepartmentModel = tables_with_wrong_association_proxy
 
     @mapper.type(EmployeeModel)
@@ -155,9 +154,7 @@ def test_relationships_schema_with_association_proxy_should_not_raise_Unsupporte
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    expected = (
-        get_test_relationships_schema_with_association_proxy_should_not_raise_UnsupportedAssociationProxyTarget_if_excluded_expected_shema()
-    )
+    expected = get_schema_should_not_raise_UnsupportedAssociation_if_excluded_expected_shema()
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
@@ -165,7 +162,6 @@ def test_relationships_schema_with_association_proxy(
     tables_with_association_proxy,
     mapper,
 ):
-
     BuildingModel, DepartmentModel, EmployeeModel = tables_with_association_proxy
 
     @mapper.type(EmployeeModel)
@@ -240,9 +236,7 @@ async def test_query_with_association_proxy_schema(
     session.close()
 
     assert result.errors is None
-    assert result.data == get_test_query_with_association_proxy_schema_expected_result(
-        *test_data
-    )
+    assert result.data == get_test_query_with_association_proxy_schema_expected_result(*test_data)
 
 
 async def test_query_with_association_proxy_schema_with_empty_database(
@@ -354,7 +348,7 @@ async def test_query_with_association_proxy_schema_keyset_connection(
     assert result.errors is None
     assert (
         result.data
-        == get_test_query_with_association_proxy_schema_keyset_connection_expected_result_with_first(
+        == get_test_query_with_association_proxy_keyset_connection_expected_result_with_first(
             *test_data
         )
     )
@@ -421,7 +415,7 @@ async def test_query_with_association_proxy_schema_with_nullable_relationship(
 # === HELPERS ===
 
 
-def get_test_relationships_schema_with_association_proxy_should_not_raise_UnsupportedAssociationProxyTarget_if_excluded_expected_shema():
+def get_schema_should_not_raise_UnsupportedAssociation_if_excluded_expected_shema():
     return '''
     type Department {
       id: Int!
@@ -562,9 +556,7 @@ def create_test_data(
     department2.employees.extend([employee2])
     building1.departments.extend([department1, department2])
 
-    session.add_all(
-        [building1, building2, department1, department2, employee1, employee2]
-    )
+    session.add_all([building1, building2, department1, department2, employee1, employee2])
     session.commit()
     return [building1, building2, department1, department2, employee1, employee2]
 
@@ -770,7 +762,7 @@ def get_test_query_with_association_proxy_schema_keyset_connection_expected_resu
     }
 
 
-def get_test_query_with_association_proxy_schema_keyset_connection_expected_result_with_first(
+def get_test_query_with_association_proxy_keyset_connection_expected_result_with_first(
     building1, building2, department1, department2, employee1, employee2
 ):
     return {
@@ -844,9 +836,7 @@ def create_test_data_with_nullable_relationship(
     department2.employees.extend([employee2])
     building2.department = department2
 
-    session.add_all(
-        [building1, building2, department1, department2, employee1, employee2]
-    )
+    session.add_all([building1, building2, department1, department2, employee1, employee2])
     session.commit()
     return building1, building2, department1, department2, employee1, employee2
 

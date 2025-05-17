@@ -64,9 +64,9 @@ class StrawberrySQLAlchemyLoader:
 
             async def load_fn(keys: List[Tuple]) -> List[Any]:
                 query = select(related_model).filter(
-                    tuple_(
-                        *[remote for _, remote in relationship.local_remote_pairs or []]
-                    ).in_(keys)
+                    tuple_(*[remote for _, remote in relationship.local_remote_pairs or []]).in_(
+                        keys
+                    )
                 )
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
@@ -87,10 +87,7 @@ class StrawberrySQLAlchemyLoader:
                 if relationship.uselist:
                     return [grouped_keys[key] for key in keys]
                 else:
-                    return [
-                        grouped_keys[key][0] if grouped_keys[key] else None
-                        for key in keys
-                    ]
+                    return [grouped_keys[key][0] if grouped_keys[key] else None for key in keys]
 
             self._loaders[relationship] = DataLoader(load_fn=load_fn)
             return self._loaders[relationship]

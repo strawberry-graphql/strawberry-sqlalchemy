@@ -75,16 +75,13 @@ def polymorphic_employee_table(base):
 
 def test_mapper_default_model_to_type_name(employee_table):
     Employee = employee_table
-    assert (
-        StrawberrySQLAlchemyMapper._default_model_to_type_name(Employee) == "Employee"
-    )
+    assert StrawberrySQLAlchemyMapper._default_model_to_type_name(Employee) == "Employee"
 
 
 def test_default_model_to_interface_name(employee_table):
     Employee = employee_table
     assert (
-        StrawberrySQLAlchemyMapper._default_model_to_interface_name(Employee)
-        == "EmployeeInterface"
+        StrawberrySQLAlchemyMapper._default_model_to_interface_name(Employee) == "EmployeeInterface"
     )
 
 
@@ -137,9 +134,7 @@ def test_convert_all_columns_to_strawberry_type(mapper):
         strawberry_type,
     ) in mapper.sqlalchemy_type_to_strawberry_type_map.items():
         assert (
-            mapper._convert_column_to_strawberry_type(
-                Column(sqlalchemy_type, nullable=False)
-            )
+            mapper._convert_column_to_strawberry_type(Column(sqlalchemy_type, nullable=False))
             == strawberry_type
         )
 
@@ -175,9 +170,7 @@ def test_convert_enum_column_to_strawberry_type(mapper):
     assert mapper._convert_column_to_strawberry_type(column) == SampleEnum
 
 
-def test_convert_relationship_to_strawberry_type(
-    employee_and_department_tables, mapper
-):
+def test_convert_relationship_to_strawberry_type(employee_and_department_tables, mapper):
     _, Department = employee_and_department_tables
     employees_property = Department.employees.property
     assert (
@@ -231,9 +224,7 @@ def test_type_simple(employee_table, mapper):
     assert id.type is int
 
 
-def test_interface_and_type_polymorphic(
-    mapper, polymorphic_employee, polymorphic_lawyer
-):
+def test_interface_and_type_polymorphic(mapper, polymorphic_employee, polymorphic_lawyer):
     @mapper.interface(polymorphic_employee)
     class EmployeeInterface:
         pass
@@ -279,9 +270,7 @@ def test_use_list(employee_and_department_tables, mapper):
     assert len(mapped_department_type.__strawberry_definition__.fields) == 3
     department_type_fields = mapped_department_type.__strawberry_definition__.fields
 
-    name = next(
-        (field for field in department_type_fields if field.name == "employees"), None
-    )
+    name = next((field for field in department_type_fields if field.name == "employees"), None)
     assert name is not None
     assert isinstance(name.type, StrawberryOptional) is False
     assert isinstance(name.type, StrawberryList) is True
@@ -451,6 +440,4 @@ def test_type_with_default_directives(
     mapped_employee_type = additional_types[0]
     assert mapped_employee_type.__name__ == "Employee"
     assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
-    assert (
-        mapped_employee_type.__strawberry_definition__.directives == expected_directives
-    )
+    assert mapped_employee_type.__strawberry_definition__.directives == expected_directives

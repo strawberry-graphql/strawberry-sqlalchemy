@@ -100,7 +100,7 @@ class KeysetConnection(relay.Connection[NodeType]):
             while isinstance(field, StrawberryContainer):
                 field = field.of_type
 
-            edge_class = cast(Edge[NodeType], field)
+            edge_class = cast("Edge[NodeType]", field)
 
             return cls(
                 page_info=relay.PageInfo(
@@ -122,14 +122,8 @@ class KeysetConnection(relay.Connection[NodeType]):
             return resolve_connection(
                 sqlakeyset.get_page(
                     nodes,
-                    before=(
-                        sqlakeyset.unserialize_bookmark(before).place
-                        if before
-                        else None
-                    ),
-                    after=(
-                        sqlakeyset.unserialize_bookmark(after).place if after else None
-                    ),
+                    before=(sqlakeyset.unserialize_bookmark(before).place if before else None),
+                    after=(sqlakeyset.unserialize_bookmark(after).place if after else None),
                     per_page=per_page,
                 )
             )
@@ -274,7 +268,7 @@ def resolve_model_nodes(
     query = session.query(model)
 
     if node_ids:
-        attrs = cast(relay.Node, source).resolve_id_attr().split("|")
+        attrs = cast("relay.Node", source).resolve_id_attr().split("|")
         converters = [getattr(model, attr).type.python_type for attr in attrs]
         filters = [
             and_(
@@ -386,9 +380,7 @@ def resolve_model_id_attr(source: Type) -> str:
         from strawberry_sqlalchemy_mapper.mapper import StrawberrySQLAlchemyType
 
         definition = StrawberrySQLAlchemyType[Any].from_type(source, strict=True)
-        id_attr = "|".join(
-            key.name for key in sqlalchemy_inspect(definition.model).primary_key
-        )
+        id_attr = "|".join(key.name for key in sqlalchemy_inspect(definition.model).primary_key)
 
     setattr(source, cache_key, id_attr)
     return id_attr
@@ -405,7 +397,7 @@ def resolve_model_id(
 
     In case of composed primary keys, those will be returned separated by a `|`.
     """
-    id_attr = cast(relay.Node, source).resolve_id_attr().split("|")
+    id_attr = cast("relay.Node", source).resolve_id_attr().split("|")
 
     assert id_attr
     # TODO: Maybe we can work with the tuples directly in the future?

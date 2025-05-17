@@ -59,17 +59,17 @@ _SessionMaker: TypeAlias = Callable[[], Union[Session, AsyncSession]]
 assert argument  # type: ignore[truthy-function]
 
 
-connection_session: contextvars.ContextVar[
-    Union[Session, AsyncSession, None]
-] = contextvars.ContextVar(
-    "connection-session",
-    default=None,
+connection_session: contextvars.ContextVar[Union[Session, AsyncSession, None]] = (
+    contextvars.ContextVar(
+        "connection-session",
+        default=None,
+    )
 )
 
 
 @contextlib.contextmanager
 def set_connection_session(
-    s: Union[Session, AsyncSession, None]
+    s: Union[Session, AsyncSession, None],
 ) -> Generator[None, None, None]:
     token = connection_session.set(s)
     try:
@@ -151,9 +151,7 @@ class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
 
         def resolver(
             info: Info,
-            id: Annotated[
-                relay.GlobalID, argument(description="The ID of the object.")
-            ],
+            id: Annotated[relay.GlobalID, argument(description="The ID of the object.")],
         ):
             session = field_sessionmaker()
 
@@ -191,9 +189,7 @@ class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
 
         def resolver(
             info: Info,
-            ids: Annotated[
-                List[relay.GlobalID], argument(description="The IDs of the objects.")
-            ],
+            ids: Annotated[List[relay.GlobalID], argument(description="The IDs of the objects.")],
         ):
             session = field_sessionmaker()
 
@@ -253,27 +249,20 @@ class StrawberrySQLAlchemyNodeExtension(relay.NodeExtension):
                             # Resolve all awaitable nodes concurrently
                             await asyncio.gather(
                                 *awaitable_nodes.values(),
-                                *(
-                                    asyncgen_to_list(nodes)
-                                    for nodes in asyncgen_nodes.values()
-                                ),
+                                *(asyncgen_to_list(nodes) for nodes in asyncgen_nodes.values()),
                             ),
                         )
                     )
 
                     # Resolve any generator to lists
-                    resolved = {
-                        node_t: list(nodes) for node_t, nodes in resolved.items()
-                    }
-                    return [
-                        resolved[index_map[gid][0]][index_map[gid][1]] for gid in ids
-                    ]
+                    resolved = {node_t: list(nodes) for node_t, nodes in resolved.items()}
+                    return [resolved[index_map[gid][0]][index_map[gid][1]] for gid in ids]
 
                 return resolve()
 
             # Resolve any generator to lists
             resolved = {
-                node_t: list(cast(Iterator[relay.Node], nodes))
+                node_t: list(cast("Iterator[relay.Node]", nodes))
                 for node_t, nodes in resolved_nodes.items()
             }
             return [resolved[index_map[gid][0]][index_map[gid][1]] for gid in ids]
@@ -297,7 +286,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
             )
 
         if node_type is None:
-            raise RelayWrongAnnotationError(field.name, cast(type, field.origin))
+            raise RelayWrongAnnotationError(field.name, cast("type", field.origin))
 
         assert isinstance(node_type, type)
         sqlalchemy_definition = StrawberrySQLAlchemyType[Any].from_type(
@@ -305,16 +294,12 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
             strict=True,
         )
         model = sqlalchemy_definition.model
-        args: dict[str, StrawberryArgument] = {
-            a.python_name: a for a in field.arguments
-        }
+        args: dict[str, StrawberryArgument] = {a.python_name: a for a in field.arguments}
         field.arguments = list(args.values())
 
         if field.base_resolver is None:
             if (field_sessionmaker := field.sessionmaker) is None:
-                raise TypeError(
-                    f"Missing `sessionmaker` argument for field {field.name}"
-                )
+                raise TypeError(f"Missing `sessionmaker` argument for field {field.name}")
 
             def default_resolver(
                 root: Optional[Any],
@@ -326,12 +311,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
                     session = field_sessionmaker()
 
                 def _get_query(s: Session):
-                    if root is not None:
-                        # root won't be None when resolving nested connections.
-                        # TODO: Maybe we want to send this to a dataloader?
-                        query = getattr(root, field.python_name)
-                    else:
-                        query = s.query(model)
+                    query = getattr(root, field.python_name) if root is not None else s.query(model)
 
                     if field.keyset is not None:
                         query = query.order_by(*field.keyset)
@@ -340,7 +320,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
 
                 if isinstance(session, AsyncSession):
                     return cast(
-                        Iterable[Any],
+                        "Iterable[Any]",
                         StrawberrySQLAlchemyAsyncQuery(
                             session=session,
                             query=lambda s: _get_query(s),
@@ -355,9 +335,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
 
     def resolve(self, *args, **kwargs) -> Any:
         if (field_sessionmaker := self.field.sessionmaker) is None:
-            raise TypeError(
-                f"Missing `sessionmaker` argument for field {self.field.name}"
-            )
+            raise TypeError(f"Missing `sessionmaker` argument for field {self.field.name}")
 
         session = field_sessionmaker()
 
@@ -380,9 +358,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
 
     async def resolve_async(self, *args, **kwargs) -> Any:
         if (field_sessionmaker := self.field.sessionmaker) is None:
-            raise TypeError(
-                f"Missing `sessionmaker` argument for field {self.field.name}"
-            )
+            raise TypeError(f"Missing `sessionmaker` argument for field {self.field.name}")
 
         session = field_sessionmaker()
 
@@ -415,8 +391,7 @@ def field(
     graphql_type: Any | None = None,
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
-) -> _T:
-    ...
+) -> _T: ...
 
 
 @overload
@@ -437,8 +412,7 @@ def field(
     graphql_type: Any | None = None,
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 @overload
@@ -459,8 +433,7 @@ def field(
     graphql_type: Any | None = None,
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
-) -> StrawberrySQLAlchemyField:
-    ...
+) -> StrawberrySQLAlchemyField: ...
 
 
 def field(
@@ -512,7 +485,7 @@ def field(
         default_factory=default_factory,
         metadata=metadata,
         directives=directives or (),
-        extensions=cast(List[FieldExtension], extensions),
+        extensions=cast("List[FieldExtension]", extensions),
         sessionmaker=sessionmaker,
     )
 
@@ -599,8 +572,7 @@ def connection(
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
     keyset: Keyset | None = None,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 @overload
@@ -622,8 +594,7 @@ def connection(
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
     keyset: Keyset | None = None,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 def connection(

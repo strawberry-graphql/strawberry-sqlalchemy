@@ -21,10 +21,10 @@ from .loader import StrawberrySQLAlchemyLoader
 from .mapper import StrawberrySQLAlchemyMapper
 
 __all__ = [
-    "__version__",
     "StrawberrySQLAlchemyLoader",
     "StrawberrySQLAlchemyMapper",
+    "__version__",
+    "connection",
     "field",
     "node",
-    "connection",
 ]

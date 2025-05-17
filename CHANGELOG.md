@@ -152,5 +152,3 @@ Contributed by [Layton Wedgeworth](https://github.com/asimov-layton) via [PR #24
 Dependency version changes needed for python 3.12 compatibility.
 
 Contributed by [mattalbr](https://github.com/mattalbr) via [PR #35](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/35/)
-
-

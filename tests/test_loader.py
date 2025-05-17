@@ -92,10 +92,7 @@ async def test_loader_for(engine, base, sessionmaker, many_to_one_tables):
         assert loader.load_fn is not None
 
         key = tuple(
-            [
-                getattr(e1, local.key)
-                for local, _ in Employee.department.property.local_remote_pairs
-            ]
+            [getattr(e1, local.key) for local, _ in Employee.department.property.local_remote_pairs]
         )
         department = await loader.load(key)
         assert department.name == "d2"
@@ -130,10 +127,7 @@ async def test_loader_with_async_session(
         await session.commit()
         d2_id = d2.id
         department_loader_key = tuple(
-            [
-                getattr(e1, local.key)
-                for local, _ in Employee.department.property.local_remote_pairs
-            ]
+            [getattr(e1, local.key) for local, _ in Employee.department.property.local_remote_pairs]
         )
     base_loader = StrawberrySQLAlchemyLoader(async_bind_factory=async_sessionmaker)
     loader = base_loader.loader_for(Employee.department.property)
