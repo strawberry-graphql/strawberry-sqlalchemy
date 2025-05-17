@@ -7,7 +7,11 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.orm import sessionmaker
 from strawberry import relay
-from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper, connection, StrawberrySQLAlchemyLoader
+from strawberry_sqlalchemy_mapper import (
+    StrawberrySQLAlchemyLoader,
+    StrawberrySQLAlchemyMapper,
+    connection,
+)
 from strawberry_sqlalchemy_mapper.relay import KeysetConnection
 
 
@@ -37,8 +41,7 @@ def test_query_empty(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -75,8 +78,7 @@ def test_query(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -261,8 +263,7 @@ def test_query_with_first(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -322,8 +323,7 @@ def test_query_with_first_and_after(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -385,8 +385,7 @@ def test_query_with_last(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -446,8 +445,7 @@ def test_query_with_last_and_before(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=sessionmaker)
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -473,8 +471,7 @@ def test_query_with_last_and_before(
         session.commit()
 
         result = schema.execute_sync(
-            query, {"first": 1, "before": relay.to_base64(
-                "arrayconnection", 2)}
+            query, {"first": 1, "before": relay.to_base64("arrayconnection", 2)}
         )
         assert result.errors is None
 
@@ -764,14 +761,9 @@ async def test_query_keyset_async(
         }
 
 
-# TODO Investigate this test
-@pytest.mark.skip("This test is currently failing because the Query with relay.ListConnection generates two DepartmentConnection, which violates the schema's expectations. After investigation, it appears this issue is related to the Relay implementation rather than the secondary table issue. We'll address this later. Additionally, note that the `result.data` may be incorrect in this test.")
 @pytest.mark.asyncio
 async def test_query_with_secondary_table_with_values_list(
-    secondary_tables,
-    base,
-    async_engine,
-    async_sessionmaker
+    secondary_tables, base, async_engine, async_sessionmaker
 ):
     async with async_engine.begin() as conn:
         await conn.run_sync(base.metadata.create_all)
@@ -780,17 +772,18 @@ async def test_query_with_secondary_table_with_values_list(
     EmployeeModel, DepartmentModel = secondary_tables
 
     @mapper.type(DepartmentModel)
-    class Department():
+    class Department:
         pass
 
     @mapper.type(EmployeeModel)
-    class Employee():
+    class Employee:
         pass
 
     @strawberry.type
     class Query:
         departments: relay.ListConnection[Department] = connection(
-            sessionmaker=async_sessionmaker)
+            sessionmaker=async_sessionmaker
+        )
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
@@ -802,7 +795,7 @@ async def test_query_with_secondary_table_with_values_list(
                     node {
                         id
                         name
-                        employees {                  
+                        employees {
                             edges {
                                 node {
                                     id
@@ -817,7 +810,7 @@ async def test_query_with_secondary_table_with_values_list(
                                         }
                                     }
                                 }
-                            }          
+                            }
                         }
                     }
                 }
@@ -838,11 +831,14 @@ async def test_query_with_secondary_table_with_values_list(
         session.add_all([department1, department2, e1, e2, e3])
         await session.commit()
 
-        result = await schema.execute(query, context_value={
-            "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
-                async_bind_factory=async_sessionmaker
-            )
-        })
+        result = await schema.execute(
+            query,
+            context_value={
+                "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                    async_bind_factory=async_sessionmaker
+                )
+            },
+        )
         assert result.errors is None
         assert result.data == {
             "departments": {
@@ -863,11 +859,11 @@ async def test_query_with_secondary_table_with_values_list(
                                                     {
                                                         "node": {
                                                             "id": 10,
-                                                            "name": "Department Test 1"
+                                                            "name": "Department Test 1",
                                                         }
                                                     }
                                                 ]
-                                            }
+                                            },
                                         }
                                     },
                                     {
@@ -880,15 +876,15 @@ async def test_query_with_secondary_table_with_values_list(
                                                     {
                                                         "node": {
                                                             "id": 10,
-                                                            "name": "Department Test 1"
+                                                            "name": "Department Test 1",
                                                         }
                                                     }
                                                 ]
-                                            }
+                                            },
                                         }
-                                    }
+                                    },
                                 ]
-                            }
+                            },
                         }
                     },
                     {
@@ -907,17 +903,17 @@ async def test_query_with_secondary_table_with_values_list(
                                                     {
                                                         "node": {
                                                             "id": 3,
-                                                            "name": "Department Test 2"
+                                                            "name": "Department Test 2",
                                                         }
                                                     }
                                                 ]
-                                            }
+                                            },
                                         }
                                     }
                                 ]
-                            }
+                            },
                         }
-                    }
+                    },
                 ]
             }
         }
