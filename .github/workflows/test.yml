@@ -31,7 +31,7 @@ jobs:
       - id: set-matrix
         shell: bash
         run: |
-          . .venv/bin/activate 
+          . .venv/bin/activate
           pip install poetry nox nox-poetry
           echo sessions=$(
             nox --json -t tests -l |
@@ -105,7 +105,7 @@ jobs:
           run: poetry run pytest tests/benchmarks --codspeed
 
   lint:
-    name: ✨ Lint
+    name: ✨ Lint and Format
     runs-on: ubuntu-latest
 
     steps:
@@ -138,6 +138,7 @@ jobs:
           mkdir .mypy_cache
 
           nox -r -t lint
+          nox -r -t format
 
   unit-tests-on-windows:
     name: 🪟 Tests on Windows

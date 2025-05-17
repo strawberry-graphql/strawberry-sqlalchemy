@@ -80,13 +80,6 @@ def mypy(session: Session) -> None:
     )
 
 
-@session(name="Black", tags=["lint"])
-def black(session: Session) -> None:
-    poetry_install_run_always(session)
-
-    session.run("black", "--check", "--diff", ".")
-
-
 @session(name="Ruff Lint", tags=["lint"])
 def ruff_lint(session: Session) -> None:
     poetry_install_run_always(session)
@@ -100,7 +93,7 @@ def ruff_lint(session: Session) -> None:
     )
 
 
-@session(name="Ruff Format", tags=["lint"])
+@session(name="Ruff Format", tags=["format"])
 def ruff_format(session: Session) -> None:
     poetry_install_run_always(session)
 
