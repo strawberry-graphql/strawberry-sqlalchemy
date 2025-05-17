@@ -86,7 +86,8 @@ pythonVersion = "3.8"
 stubPath = ""
 
 [tool.ruff]
-line-length = 88
+line-length = 100
+indent-width = 4
 select = ["ALL"]
 target-version = "py37"
 ignore = [
@@ -242,6 +243,8 @@ exclude = [
 src = ["src/strawberry_sqlalchemy_mapper", "tests"]
 
 [tool.ruff.per-file-ignores]
+"docs/conf.py" = ["ERA001", "PTH118", "PTH120"]
+"src/strawberry_sqlalchemy_mapper/field.py" = ["TCH001", "TCH002", "TCH003"]
 "tests/*" = [
   "RSE102",
   "SLF001",

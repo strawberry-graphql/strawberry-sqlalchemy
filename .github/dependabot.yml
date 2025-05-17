@@ -9,7 +9,7 @@ updates:
     all-dependencies:
       patterns:
         - "*"
-      # Strawberry is an internal dependency, 
+      # Strawberry is an internal dependency,
       # let's keep an additional eye on this
       exclude-patterns:
         - "strawberry-graphql"
