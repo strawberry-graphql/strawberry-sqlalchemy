@@ -93,7 +93,7 @@ def ruff_lint(session: Session) -> None:
     )
 
 
-@session(name="Ruff Format", tags=["lint"])
+@session(name="Ruff Format", tags=["format"])
 def ruff_format(session: Session) -> None:
     poetry_install_run_always(session)
 

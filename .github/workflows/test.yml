@@ -134,11 +134,9 @@ jobs:
             ${{ runner.os }}-nox-lint-${{ env.pythonLocation }}
 
       - run: pip install poetry nox nox-poetry uv
-      - run: |
-          mkdir .mypy_cache
-
-          nox -r -t lint
-          nox -r -t format
+      - run: mkdir .mypy_cache
+      - run: nox -r -t lint
+      - run: nox -r -t format
 
   unit-tests-on-windows:
     name: 🪟 Tests on Windows
