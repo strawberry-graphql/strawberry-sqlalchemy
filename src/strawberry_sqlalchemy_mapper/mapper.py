@@ -763,10 +763,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
             # ignore inherited `is_type_of`
             if "is_type_of" not in type_.__dict__:
-                type_.is_type_of = (
-                    lambda obj, info: type(obj) == model  # noqa: E721
-                    or type(obj) == type_  # noqa: E721
-                )
+                type_.is_type_of = lambda obj, info: type(obj) is model or type(obj) is type_
 
             # Default querying methods for relay
             if issubclass(type_, relay.Node):
