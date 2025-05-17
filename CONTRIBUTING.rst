@@ -102,6 +102,77 @@ and use Python's built-in web server for a preview in your web browser
 
     python3 -m http.server --directory 'docs/_build/html'
 
+Project Setup
+=============
+
+Clone the repository
+--------------------
+
+#. Create an user account on |the repository service| if you do not already have one.
+#. Fork the project repository_: click on the *Fork* button near the top of the
+   page. This creates a copy of the code under your account on |the repository service|.
+#. Clone this copy to your local disk::
+
+    git clone git@github.com:YOUR_USERNAME_HERE/strawberry-sqlalchemy-mapper.git
+    cd strawberry-sqlalchemy-mapper
+
+Install dependencies and plugins
+--------------------------------
+
+.. todo:: Rewrite the following snippets to use the poetry environment rather than setuptools
+
+   There are two ways to set up the environment for local development:
+
+   #. Manual environment setup
+
+   #. Dev Container setup
+
+   Method 1: Manual environment setup
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   #. Before you start coding, we recommend creating an isolated `virtual
+      environment`_ to avoid any problems with your installed Python packages.
+      This can easily be done via either |virtualenv|_::
+
+         virtualenv <PATH TO VENV>
+         source <PATH TO VENV>/bin/activate
+
+      or Miniconda_::
+
+         conda create -n strawberry-sqlalchemy-mapper python=3 six virtualenv pytest pytest-cov
+         conda activate strawberry-sqlalchemy-mapper
+
+   #. You should run::
+
+      pip install -U pip setuptools -e .
+
+      to be able to import the package under development in the Python REPL.
+
+      .. todo:: if you are not using pre-commit, please remove the following item:
+
+   #. Install |pre-commit|_::
+
+      pip install pre-commit
+      pre-commit install
+
+      ``strawberry-sqlalchemy-mapper`` comes with a lot of hooks configured to automatically help the
+      developer to check the code being written.
+
+
+   Method 2: Dev Container setup
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+#. Install `Dev Containers`_.
+
+#. Press ``Ctrl+Shift+P`` to open the command tab and enter ``Dev Containers: Open Folder in Container...``.
+
+#. Select the root directory of this repository.
+   Dev Containers will now install the environment dependencies as well as |pre-commit|_
+
+#. When installation is complete, press ``Ctrl+Shift+P`` to open the command tab and enter ``Python Select Interpreter``
+
+#. Select the environment labeled 'poetry'.
+
 
 Code Contributions
 ==================
@@ -118,48 +189,6 @@ Submit an issue
 Before you work on any non-trivial code contribution it's best to first create
 a report in the `issue tracker`_ to start a discussion on the subject.
 This often provides additional considerations and avoids unnecessary work.
-
-Create an environment
----------------------
-
-Before you start coding, we recommend creating an isolated `virtual
-environment`_ to avoid any problems with your installed Python packages.
-This can easily be done via either |virtualenv|_::
-
-    virtualenv <PATH TO VENV>
-    source <PATH TO VENV>/bin/activate
-
-or Miniconda_::
-
-    conda create -n strawberry-sqlalchemy-mapper python=3 six virtualenv pytest pytest-cov
-    conda activate strawberry-sqlalchemy-mapper
-
-Clone the repository
---------------------
-
-#. Create an user account on |the repository service| if you do not already have one.
-#. Fork the project repository_: click on the *Fork* button near the top of the
-   page. This creates a copy of the code under your account on |the repository service|.
-#. Clone this copy to your local disk::
-
-    git clone git@github.com:YourLogin/strawberry-sqlalchemy-mapper.git
-    cd strawberry-sqlalchemy-mapper
-
-#. You should run::
-
-    pip install -U pip setuptools -e .
-
-   to be able to import the package under development in the Python REPL.
-
-   .. todo:: if you are not using pre-commit, please remove the following item:
-
-#. Install |pre-commit|_::
-
-    pip install pre-commit
-    pre-commit install
-
-   ``strawberry-sqlalchemy-mapper`` comes with a lot of hooks configured to automatically help the
-   developer to check the code being written.
 
 Implement your changes
 ----------------------
@@ -314,8 +343,8 @@ on PyPI_, the following steps can be used to release a new version for
 .. |the repository service| replace:: GitHub
 .. |contribute button| replace:: "Create pull request"
 
-.. _repository: https://github.com/<USERNAME>/strawberry-sqlalchemy-mapper
-.. _issue tracker: https://github.com/<USERNAME>/strawberry-sqlalchemy-mapper/issues
+.. _repository: https://github.com/strawberry-graphql/strawberry-sqlalchemy
+.. _issue tracker: https://github.com/strawberry-graphql/strawberry-sqlalchemy/issues
 .. <-- end -->
 
 
@@ -329,6 +358,7 @@ on PyPI_, the following steps can be used to release a new version for
 .. _contribution-guide.org: https://www.contribution-guide.org/
 .. _creating a PR: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
 .. _descriptive commit message: https://chris.beams.io/posts/git-commit
+.. _Dev Containers: https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers
 .. _docstrings: https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
 .. _first-contributions tutorial: https://github.com/firstcontributions/first-contributions
 .. _flake8: https://flake8.pycqa.org/en/stable/

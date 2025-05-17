@@ -20,6 +20,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
+from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 from testing.postgresql import Postgresql, PostgresqlFactory
 
 SQLA_VERSION = version.parse(sqlalchemy.__version__)
@@ -27,7 +28,8 @@ SQLA2 = SQLA_VERSION >= version.parse("2.0")
 
 
 logging.basicConfig()
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+log = logging.getLogger("sqlalchemy.engine")
+log.setLevel(logging.INFO)
 
 
 def _pick_unused_port():
@@ -55,7 +57,7 @@ if platform.system() == "Windows":
     # Our windows test pipeline doesn't play nice with postgres because
     # Github Actions doesn't support containers on windows.
     # It would probably be nicer if we chcked if postgres is installed
-    logging.info("Skipping postgresql tests on Windows OS")
+    log.info("Skipping postgresql tests on Windows OS")
     SUPPORTED_DBS = []
 else:
     SUPPORTED_DBS = ["postgresql"]  # TODO: Add sqlite and mysql.
@@ -118,8 +120,12 @@ def default_employee_department_join_table(base):
     EmployeeDepartmentJoinTable = sqlalchemy.Table(
         "employee_department_join_table",
         base.metadata,
-        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
-        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey("department.id"), primary_key=True),
+        sqlalchemy.Column(
+            "employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True
+        ),
+        sqlalchemy.Column(
+            "department_id", sqlalchemy.ForeignKey("department.id"), primary_key=True
+        ),
     )
 
 
@@ -127,7 +133,9 @@ def default_employee_department_join_table(base):
 def secondary_tables(base, default_employee_department_join_table):
     class Employee(base):
         __tablename__ = "employee"
-        id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True, nullable=False)
+        id = sqlalchemy.Column(
+            sqlalchemy.Integer, autoincrement=True, primary_key=True, nullable=False
+        )
         name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
         role = sqlalchemy.Column(sqlalchemy.String, nullable=True)
         department = orm.relationship(
@@ -154,9 +162,12 @@ def secondary_tables_with_another_foreign_key(base):
     EmployeeDepartmentJoinTable = sqlalchemy.Table(
         "employee_department_join_table",
         base.metadata,
-        sqlalchemy.Column("employee_name", sqlalchemy.ForeignKey("employee.name"), primary_key=True),
-        sqlalchemy.Column("department_id", sqlalchemy.ForeignKey(
-            "department.id"), primary_key=True),
+        sqlalchemy.Column(
+            "employee_name", sqlalchemy.ForeignKey("employee.name"), primary_key=True
+        ),
+        sqlalchemy.Column(
+            "department_id", sqlalchemy.ForeignKey("department.id"), primary_key=True
+        ),
     )
 
     class Employee(base):
@@ -184,12 +195,18 @@ def secondary_tables_with_another_foreign_key(base):
 
 
 @pytest.fixture
-def secondary_tables_with_more_secondary_tables(base, default_employee_department_join_table):
+def secondary_tables_with_more_secondary_tables(
+    base, default_employee_department_join_table
+):
     EmployeeBuildingJoinTable = sqlalchemy.Table(
         "employee_building_join_table",
         base.metadata,
-        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
-        sqlalchemy.Column("building_id", sqlalchemy.ForeignKey("building.id"), primary_key=True),
+        sqlalchemy.Column(
+            "employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True
+        ),
+        sqlalchemy.Column(
+            "building_id", sqlalchemy.ForeignKey("building.id"), primary_key=True
+        ),
     )
 
     class Employee(base):
@@ -252,14 +269,16 @@ def secondary_tables_with_use_list_false(base, default_employee_department_join_
             "Employee",
             secondary="employee_department_join_table",
             back_populates="department",
-            uselist=False
+            uselist=False,
         )
 
     return Employee, Department
 
 
 @pytest.fixture
-def secondary_tables_with_normal_relationship(base, default_employee_department_join_table):
+def secondary_tables_with_normal_relationship(
+    base, default_employee_department_join_table
+):
     class Employee(base):
         __tablename__ = "employee"
         id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
@@ -270,7 +289,9 @@ def secondary_tables_with_normal_relationship(base, default_employee_department_
             secondary="employee_department_join_table",
             back_populates="employees",
         )
-        building_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("building.id"))
+        building_id = sqlalchemy.Column(
+            sqlalchemy.Integer, sqlalchemy.ForeignKey("building.id")
+        )
         building = orm.relationship(
             "Building",
             back_populates="employees",
@@ -447,7 +468,7 @@ def expected_schema_from_secondary_tables_with_more_secondary_tables():
         departments: [Department!]!
       }
       '''
-    
+
 
 @pytest.fixture
 def expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false():
@@ -571,3 +592,7 @@ def expected_schema_from_secondary_tables_with_more_secondary_tables_with__with_
       departments: [Department!]!
     }
     '''
+
+
+def mapper():
+    return StrawberrySQLAlchemyMapper()

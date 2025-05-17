@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 24.8.0 # Do not update this repository; it is pinned for compatibility with python 3.8
+    rev: 24.4.0
     hooks:
       - id: black
         exclude: ^tests/\w+/snapshots/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.3
+    rev: v0.11.7
     hooks:
       - id: ruff
         exclude: ^tests/\w+/snapshots/
@@ -33,7 +33,7 @@ repos:
       - id: check-toml
 
   - repo: https://github.com/adamchainz/blacken-docs
-    rev: 1.18.0 # Do not update this repository; it is pinned for compatibility with python 3.8
+    rev: 1.18.0
     hooks:
       - id: blacken-docs
         args: [--skip-errors]

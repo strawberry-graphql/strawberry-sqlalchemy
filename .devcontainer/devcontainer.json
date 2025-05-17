@@ -1,26 +1,37 @@
 {
   "name": "Strawberry Sqlalchemy Mapper",
-  "context": "..",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": ".."
   },
-
-  "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash",
-    "python.pythonPath": "/usr/local/bin/python",
-    "python.linting.enabled": true,
-    "python.linting.pylintEnabled": true,
-    "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-    "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-    "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-    "python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
-    "python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
-    "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-    "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-    "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint"
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "python.terminal.activateEnvironment": true,
+        "python.pythonPath": "${workspaceFolder}/.venv/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.mypyEnabled": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "python.formatting.provider": "black",
+        "python.formatting.blackPath": "${workspaceFolder}/.venv/bin/black",
+        "python.linting.mypyPath": "${workspaceFolder}/.venv/bin/mypy"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "charliermarsh.ruff",
+        // Dont install these extensions because they conflict with black lint
+        "-dbaeumer.vscode-eslint",
+        "-ms-python.autopep8"
+      ]
+    }
   },
-
-  "extensions": ["ms-python.python", "ms-python.vscode-pylance", "eamodio.gitlens"],
-  "postCreateCommand": "sh ./.devcontainer/post-install.sh",
-  "postStartCommand": "sh ./.devcontainer/post-start.sh",
+  "postCreateCommand": "chmod +x ./.devcontainer/post-install.sh && ./.devcontainer/post-install.sh",
+  "postStartCommand": "chmod +x ./.devcontainer/post-start.sh && ./.devcontainer/post-start.sh"
 }

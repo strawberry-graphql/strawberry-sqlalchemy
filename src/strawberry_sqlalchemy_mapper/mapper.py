@@ -25,6 +25,7 @@ from typing import (
     NewType,
     Optional,
     Protocol,
+    Sequence,
     Set,
     Type,
     TypeVar,
@@ -68,14 +69,12 @@ from sqlalchemy.orm import (
     Mapper,
     RelationshipProperty,
 )
-from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.sql.type_api import TypeEngine
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
 from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.types import Info
 from strawberry.types.base import WithStrawberryObjectDefinition, get_object_definition
-from strawberry.types.field import StrawberryField
 from strawberry.types.lazy_type import LazyType
 from strawberry.types.private import is_private
 
@@ -97,13 +96,14 @@ from strawberry_sqlalchemy_mapper.relay import (
 from strawberry_sqlalchemy_mapper.scalars import BigInt
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm.state import InstanceState
     from sqlalchemy.sql.expression import ColumnElement
+    from strawberry.types.field import StrawberryField
 
 BaseModelType = TypeVar("BaseModelType")
 
 SkipTypeSentinelT = NewType("SkipTypeSentinelT", object)
-SkipTypeSentinel = cast(SkipTypeSentinelT, sentinel.create("SkipTypeSentinel"))
-
+SkipTypeSentinel = cast("SkipTypeSentinelT", sentinel.create("SkipTypeSentinel"))
 
 #: Set on generated types to the original type handed to the decorator
 _ORIGINAL_TYPE_KEY = "_original_type"
@@ -466,27 +466,33 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         edge_type = self._edge_type_for(type_name)
 
         async def wrapper(self, info: Info):
-            # TODO: Add pagination support to dataloader resolvers
-            edges = [
-                edge_type.resolve_edge(
-                    related_object,
-                    cursor=i,
-                )
-                for i, related_object in enumerate(await resolver(self, info))
-            ]
-            return connection_type(
-                edges=edges,
-                page_info=relay.PageInfo(
-                    has_next_page=False,
-                    has_previous_page=False,
-                    start_cursor=edges[0].cursor if edges else None,
-                    end_cursor=edges[-1].cursor if edges else None,
-                ),
+            return StrawberrySQLAlchemyMapper._resolve_connection_edges(
+                await resolver(self, info), edge_type, connection_type
             )
 
         setattr(wrapper, _IS_GENERATED_RESOLVER_KEY, True)
 
         return wrapper
+
+    @staticmethod
+    def _resolve_connection_edges(related_objects, edge_type, connection_type):
+        # TODO: Add pagination support to dataloader resolvers
+        edges = [
+            edge_type.resolve_edge(
+                related_object,
+                cursor=i,
+            )
+            for i, related_object in enumerate(related_objects)
+        ]
+        return connection_type(
+            edges=edges,
+            page_info=relay.PageInfo(
+                has_next_page=False,
+                has_previous_page=False,
+                start_cursor=edges[0].cursor if edges else None,
+                end_cursor=edges[-1].cursor if edges else None,
+            ),
+        )
 
     def relationship_resolver_for(
         self, relationship: RelationshipProperty
@@ -497,7 +503,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
 
         async def resolve(self, info: Info):
-            instance_state = cast(InstanceState, inspect(self))
+            instance_state = cast("InstanceState", inspect(self))
             if relationship.key not in instance_state.unloaded:
                 related_objects = getattr(self, relationship.key)
             else:
@@ -592,7 +598,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             in_between_objects = await in_between_resolver(self, info)
             if in_between_objects is None:
                 if is_multiple:
-                    return connection_type(edges=[])
+                    return connection_type(
+                        edges=[],
+                        page_info=relay.PageInfo(
+                            has_next_page=False,
+                            has_previous_page=False,
+                            start_cursor=None,
+                            end_cursor=None,
+                        ),
+                    )
                 else:
                     return None
             if descriptor.value_attr in in_between_mapper.relationships:
@@ -612,7 +626,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     outputs = await end_relationship_resolver(in_between_objects, info)
                 if not isinstance(outputs, collections.abc.Iterable):
                     return outputs
-                return connection_type(edges=[edge_type(node=obj) for obj in outputs])
+                return StrawberrySQLAlchemyMapper._resolve_connection_edges(
+                    outputs, edge_type, connection_type
+                )
             else:
                 assert descriptor.value_attr in in_between_mapper.columns
                 if isinstance(in_between_objects, collections.abc.Iterable):
@@ -658,6 +674,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         model: Type[BaseModelType],
         make_interface=False,
         use_federation=False,
+        directives: Union[Sequence[object], None] = (),
     ) -> Callable[[Type[object]], Any]:
         """
         Decorate a type with this to register it as a strawberry type
@@ -684,7 +701,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             type_.__annotations__ = {
                 k: v for k, v in old_annotations.items() if is_private(v)
             }
-            mapper: Mapper = cast(Mapper, inspect(model))
+            mapper: Mapper = cast("Mapper", inspect(model))
             generated_field_keys = []
 
             excluded_keys = getattr(type_, "__exclude__", [])
@@ -723,7 +740,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     generated_field_keys,
                 )
                 sqlalchemy_field = cast(
-                    StrawberryField,
+                    "StrawberryField",
                     field(
                         resolver=self.connection_resolver_for(
                             relationship,
@@ -767,7 +784,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         type_, key, strawberry_type, generated_field_keys
                     )
                     sqlalchemy_field = cast(
-                        StrawberryField,
+                        "StrawberryField",
                         field(
                             resolver=self.association_proxy_resolver_for(
                                 mapper,
@@ -839,7 +856,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         setattr(
                             type_,
                             attr,
-                            types.MethodType(cast(classmethod, meth).__func__, type_),
+                            types.MethodType(cast("classmethod", meth).__func__, type_),
                         )
 
             # need to make fields that are already in the type
@@ -853,10 +870,12 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 mapped_type = strawberry.interface(type_)
                 self.mapped_interfaces[type_.__name__] = mapped_type
             elif use_federation:
-                mapped_type = strawberry.federation.type(type_)
+                mapped_type = strawberry.federation.type(
+                    type_, directives=directives if directives else ()
+                )
                 self.mapped_types[type_.__name__] = mapped_type
             else:
-                mapped_type = strawberry.type(type_)
+                mapped_type = strawberry.type(type_, directives=directives)
                 self.mapped_types[type_.__name__] = mapped_type
 
             setattr(

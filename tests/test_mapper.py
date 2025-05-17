@@ -13,11 +13,6 @@ from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
 
 
 @pytest.fixture
-def mapper():
-    return StrawberrySQLAlchemyMapper()
-
-
-@pytest.fixture
 def polymorphic_employee(base):
     class Employee(base):
         __tablename__ = "employee"
@@ -151,9 +146,9 @@ def test_convert_all_columns_to_strawberry_type(mapper):
 
 def test_convert_column_to_strawberry_type(mapper):
     int_column = Column(Integer, nullable=False)
-    assert mapper._convert_column_to_strawberry_type(int_column) == int
+    assert mapper._convert_column_to_strawberry_type(int_column) is int
     string_column = Column(String, nullable=False)
-    assert mapper._convert_column_to_strawberry_type(string_column) == str
+    assert mapper._convert_column_to_strawberry_type(string_column) is str
 
 
 def test_convert_json_column_to_strawberry_type(mapper):
@@ -231,9 +226,9 @@ def test_type_simple(employee_table, mapper):
     assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
     employee_type_fields = mapped_employee_type.__strawberry_definition__.fields
     name = next(iter(filter(lambda f: f.name == "name", employee_type_fields)))
-    assert name.type == str
+    assert name.type is str
     id = next(iter(filter(lambda f: f.name == "id", employee_type_fields)))
-    assert id.type == int
+    assert id.type is int
 
 
 def test_interface_and_type_polymorphic(
@@ -307,9 +302,9 @@ def test_type_relationships(employee_and_department_tables, mapper):
     assert len(mapped_employee_type.__strawberry_definition__.fields) == 4
     employee_type_fields = mapped_employee_type.__strawberry_definition__.fields
     name = next(iter(filter(lambda f: f.name == "department_id", employee_type_fields)))
-    assert type(name.type) == StrawberryOptional
+    assert type(name.type) is StrawberryOptional
     id = next(iter(filter(lambda f: f.name == "department", employee_type_fields)))
-    assert type(id.type) == StrawberryOptional
+    assert type(id.type) is StrawberryOptional
 
 
 def test_relationships_schema(employee_and_department_tables, mapper):
@@ -381,7 +376,9 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
-def test_relationships_schema_with_secondary_tables(secondary_tables, mapper, expected_schema_from_secondary_tables):
+def test_relationships_schema_with_secondary_tables(
+    secondary_tables, mapper, expected_schema_from_secondary_tables
+):
     EmployeeModel, DepartmentModel = secondary_tables
 
     @mapper.type(EmployeeModel)
@@ -403,7 +400,11 @@ def test_relationships_schema_with_secondary_tables(secondary_tables, mapper, ex
     assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables).strip()
 
 
-def test_relationships_schema_with_secondary_tables_with_another_foreign_key(secondary_tables_with_another_foreign_key, mapper, expected_schema_from_secondary_tables):
+def test_relationships_schema_with_secondary_tables_with_another_foreign_key(
+    secondary_tables_with_another_foreign_key,
+    mapper,
+    expected_schema_from_secondary_tables,
+):
     EmployeeModel, DepartmentModel = secondary_tables_with_another_foreign_key
 
     @mapper.type(EmployeeModel)
@@ -425,8 +426,14 @@ def test_relationships_schema_with_secondary_tables_with_another_foreign_key(sec
     assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables).strip()
 
 
-def test_relationships_schema_with_secondary_tables_with_more_secondary_tables(secondary_tables_with_more_secondary_tables, mapper, expected_schema_from_secondary_tables_with_more_secondary_tables):
-    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_more_secondary_tables
+def test_relationships_schema_with_secondary_tables_with_more_secondary_tables(
+    secondary_tables_with_more_secondary_tables,
+    mapper,
+    expected_schema_from_secondary_tables_with_more_secondary_tables,
+):
+    EmployeeModel, DepartmentModel, BuildingModel = (
+        secondary_tables_with_more_secondary_tables
+    )
 
     @mapper.type(EmployeeModel)
     class Employee:
@@ -448,10 +455,19 @@ def test_relationships_schema_with_secondary_tables_with_more_secondary_tables(s
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables_with_more_secondary_tables).strip()
+    assert (
+        str(schema)
+        == textwrap.dedent(
+            expected_schema_from_secondary_tables_with_more_secondary_tables
+        ).strip()
+    )
 
 
-def test_relationships_schema_with_secondary_tables_with_use_list_false(secondary_tables_with_use_list_false, mapper, expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false):
+def test_relationships_schema_with_secondary_tables_with_use_list_false(
+    secondary_tables_with_use_list_false,
+    mapper,
+    expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false,
+):
     EmployeeModel, DepartmentModel = secondary_tables_with_use_list_false
 
     @mapper.type(EmployeeModel)
@@ -462,7 +478,6 @@ def test_relationships_schema_with_secondary_tables_with_use_list_false(secondar
     class Department:
         pass
 
-
     @strawberry.type
     class Query:
         @strawberry.field
@@ -471,11 +486,22 @@ def test_relationships_schema_with_secondary_tables_with_use_list_false(secondar
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false).strip()
+    assert (
+        str(schema)
+        == textwrap.dedent(
+            expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false
+        ).strip()
+    )
 
 
-def test_relationships_schema_with_secondary_tables_with_normal_relationship(secondary_tables_with_normal_relationship, mapper, expected_schema_from_secondary_tables_with_more_secondary_tables_with__with_normal_relationship):
-    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_normal_relationship
+def test_relationships_schema_with_secondary_tables_with_normal_relationship(
+    secondary_tables_with_normal_relationship,
+    mapper,
+    expected_schema_from_secondary_tables_with_more_secondary_tables_with__with_normal_relationship,
+):
+    EmployeeModel, DepartmentModel, BuildingModel = (
+        secondary_tables_with_normal_relationship
+    )
 
     @mapper.type(EmployeeModel)
     class Employee:
@@ -486,9 +512,8 @@ def test_relationships_schema_with_secondary_tables_with_normal_relationship(sec
         pass
 
     @mapper.type(BuildingModel)
-    class Building():
+    class Building:
         pass
-
 
     @strawberry.type
     class Query:
@@ -497,5 +522,90 @@ def test_relationships_schema_with_secondary_tables_with_normal_relationship(sec
 
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
-    
-    assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables_with_more_secondary_tables_with__with_normal_relationship).strip()
+
+    assert (
+        str(schema)
+        == textwrap.dedent(
+            expected_schema_from_secondary_tables_with_more_secondary_tables_with__with_normal_relationship
+        ).strip()
+    )
+
+
+@pytest.mark.parametrize(
+    "directives",
+    [
+        (["@deprecated(reason: 'Use newEmployee instead')"]),
+        (
+            [
+                "@deprecated(reason: 'Use newEmployee instead')",
+                "@customDirective(value: 'example')",
+            ]
+        ),
+    ],
+)
+def test_type_with_directives(mapper, employee_table, directives):
+    Employee = employee_table
+
+    @mapper.type(Employee, directives=directives)
+    class Employee:
+        pass
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 1
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
+    assert mapped_employee_type.__strawberry_definition__.directives == directives
+
+
+@pytest.mark.parametrize(
+    "directives",
+    [
+        (["@deprecated(reason: 'Use newEmployee instead')"]),
+        (
+            [
+                "@deprecated(reason: 'Use newEmployee instead')",
+                "@customDirective(value: 'example')",
+            ]
+        ),
+    ],
+)
+def test_type_with_directives_and_federation(mapper, employee_table, directives):
+    Employee = employee_table
+
+    @mapper.type(Employee, directives=directives, use_federation=True)
+    class Employee:
+        pass
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 1
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
+    assert mapped_employee_type.__strawberry_definition__.directives == directives
+
+
+@pytest.mark.parametrize(
+    ("use_federation_value", "expected_directives"),
+    [(True, []), (False, ())],
+)
+def test_type_with_default_directives(
+    mapper, employee_table, use_federation_value, expected_directives
+):
+    Employee = employee_table
+
+    @mapper.type(Employee, use_federation=use_federation_value)
+    class Employee:
+        pass
+
+    mapper.finalize()
+    additional_types = list(mapper.mapped_types.values())
+    assert len(additional_types) == 1
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "Employee"
+    assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
+    assert (
+        mapped_employee_type.__strawberry_definition__.directives == expected_directives
+    )
