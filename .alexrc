@@ -1,6 +1,5 @@
 {
   "allow": [
-    "black",
     "hook",
     "hooks",
     "failure",
