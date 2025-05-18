@@ -58,7 +58,7 @@ def tests_sqlalchemy_1_4(session: Session) -> None:
         external=True,
     )
     poetry_install_run_always(session)
-    session.install("sqlalchemy~=1.4")
+    session._session.install("sqlalchemy~=1.4")
 
     session.run(
         "pytest",
