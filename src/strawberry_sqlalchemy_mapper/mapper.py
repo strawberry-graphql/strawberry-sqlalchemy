@@ -399,10 +399,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if relationship.direction in [ONETOMANY, MANYTOMANY]:
             # many on other side means it's optional always
             return True
-        else:
-            assert relationship.direction == MANYTOONE
-            # this model is the one with the FK
-            return any(local_col.nullable for local_col, _ in relationship.local_remote_pairs or [])
+        assert relationship.direction == MANYTOONE
+        # this model is the one with the FK
+        return any(local_col.nullable for local_col, _ in relationship.local_remote_pairs or [])
 
     def _add_annotation(
         self, type_: Any, key: str, annotation: Any, generated_field_keys: List[str]
