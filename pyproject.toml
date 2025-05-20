@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "strawberry-sqlalchemy-mapper"
-packages = [ { include = "strawberry_sqlalchemy_mapper", from = "src" } ]
+packages = [{ include = "strawberry_sqlalchemy_mapper", from = "src" }]
 version = "0.6.1"
 description = "A library for autogenerating Strawberry GraphQL types from SQLAlchemy models."
 authors = ["Tim Dumol <tim@timdumol.com>"]
@@ -13,11 +13,11 @@ repository = "https://github.com/strawberry-graphql/strawberry-sqlalchemy"
 documentation = "https://strawberry.rocks/"
 
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Topic :: Software Development :: Libraries",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "License :: OSI Approved :: MIT License",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "License :: OSI Approved :: MIT License",
 ]
 include = ["src/strawberry_sqlalchemy_mapper/py.typed"]
 
@@ -30,8 +30,9 @@ include = ["src/strawberry_sqlalchemy_mapper/py.typed"]
 "Sponsor on Open Collective" = "https://opencollective.com/strawberry-graphql"
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 
 [tool.setuptools_scm]
 # For smarter version schemes and other configuration options,
@@ -40,15 +41,14 @@ version_scheme = "no-guess-dev"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-sqlalchemy = {extras = ["asyncio"], version = ">=1.4"}
+sqlalchemy = { extras = ["asyncio"], version = ">=1.4" }
 strawberry-graphql = ">=0.236.0"
 sentinel = ">=0.3,<1.1"
-greenlet = {version = ">=3.0.0rc1", python = ">=3.12"}
+greenlet = { version = ">=3.0.0rc1", python = ">=3.12" }
 sqlakeyset = "^2.0.1695177552"
 
 [tool.poetry.group.dev.dependencies]
 asyncpg = ">=0.28,<0.30"
-black = ">=22,<24"
 importlib-metadata = ">=4.11.1,<8.0.0"
 mypy = "1.8.0"
 nox = "^2023.4.22"
@@ -62,12 +62,10 @@ pytest-codspeed = "^2.0.1"
 pytest-cov = "^4.0.0"
 pytest-emoji = "^0.2.0"
 pytest-mypy-plugins = ">=1.10,<4.0"
-pytest-xdist = {extras = ["psutil"], version = "^3.1.0"}
+pytest-xdist = { extras = ["psutil"], version = "^3.1.0" }
 setuptools = ">=67.8.0"
 "testing.postgresql" = ">=1.3.0"
-
-[tool.black]
-line-length = 88
+ruff = "^0.4.4"
 
 [tool.pytest.ini_options]
 addopts = "--emoji --mypy-ini-file=mypy.ini"
@@ -82,179 +80,188 @@ append-github-contributor = true
 
 [tool.pyright]
 include = ["src/strawberry_sqlalchemy_mapper"]
-exclude = ["**/__pycache__",]
+exclude = ["**/__pycache__"]
 reportMissingImports = true
 reportMissingTypeStubs = false
 pythonVersion = "3.8"
 stubPath = ""
 
 [tool.ruff]
-line-length = 88
-select = ["ALL"]
-target-version = "py37"
-ignore = [
-    # https://github.com/astral-sh/ruff/pull/4427
-    # equivalent to keep-runtime-typing
-    "UP006",
-    "UP007",
+line-length = 100
+indent-width = 4
+lint.select = ["ALL"]
+target-version = "py38"
+lint.ignore = [
+  # https://github.com/astral-sh/ruff/pull/4427
+  # equivalent to keep-runtime-typing
+  "UP006",
+  "UP007",
 
-    "TID252",
-    # we use asserts in tests and to hint mypy
-    "S101",
-    "S102",
-    "S104",
-    "S324",
-    # maybe we can enable this in future
-    # we'd want to have consistent docstrings in future
-    "D",
-    "ANN001", # missing annotation for function argument self.
-    "ANN002", # missing annotation for *args.
-    "ANN003", # missing annotatino for **kwargs.
-    "ANN101", # missing annotation for self?
-    # definitely enable these, maybe not in tests
-    "ANN102",
-    "ANN202",
-    "ANN204",
-    "ANN205",
-    "ANN401",
-    "PGH003",
-    "PGH004",
-    "RET504",
-    "RET505",
-    "RET506",
-    "RET507",
-    "RET503",
-    "BLE001",
-    "B008",
-    "N811",
-    "N804",
-    "N818",
-    # Variable `T` in function should be lowercase
-    # this seems a potential bug or opportunity for improvement in ruff
-    "N806",
+  "TID252",
+  # we use asserts in tests and to hint mypy
+  "S101",
+  "S102",
+  "S104",
+  "S324",
+  # maybe we can enable this in future
+  # we'd want to have consistent docstrings in future
+  "D",
+  "ANN001", # missing annotation for function argument self.
+  "ANN101",
+  "ANN102",
+  "ANN002", # missing annotation for *args.
+  "ANN003", # missing annotation for **kwargs.
+  "ANN202",
+  "ANN204",
+  "ANN205",
+  "ANN401",
+  "PGH003",
+  "PGH004",
+  "RET504",
+  "RET505",
+  "RET506",
+  "RET507",
+  "RET503",
+  "BLE001",
+  "B008",
+  "N811",
+  "N804",
+  "N818",
+  # Variable `T` in function should be lowercase
+  # this seems a potential bug or opportunity for improvement in ruff
+  "N806",
 
-    # first argument should named self (found in tests)
-    "N805",
+  # first argument should named self (found in tests)
+  "N805",
 
-    "N815",
+  "N815",
 
-    # shadowing builtins
-    "A001",
-    "A002",
-    "A003",
+  # shadowing builtins
+  "A001",
+  "A002",
+  "A003",
 
-    "ARG001",
-    "ARG002",
-    "ARG003",
-    "ARG004",
-    "ARG005",
-    "FBT001",
-    "FBT002",
-    "FBT003",
+  "ARG001",
+  "ARG002",
+  "ARG003",
+  "ARG004",
+  "ARG005",
+  "FBT001",
+  "FBT002",
+  "FBT003",
 
-    "PT001",
-    "PT023",
+  "PT001",
+  "PT023",
 
-    # enable these, we have some in tests
-    "B006",
-    "PT004",
-    "PT007",
-    "PT011",
-    "PT012",
-    "PT015",
-    "PT017",
-    "C414",
-    "N802",
+  # enable these, we have some in tests
+  "B006",
+  "PT007",
+  "PT011",
+  "PT012",
+  "PT015",
+  "PT017",
+  "C414",
+  "N802",
 
-    "SIM117",
-    "SIM102",
+  "SIM117",
+  "SIM102",
 
-    "F841",
-    "B027",
-    "B905",
-    "ISC001",
+  "F841",
+  "B027",
+  "B905",
+  "ISC001",
 
-    "E501",  # Line too long (we enforce black on pre-commit anyway).
+  # same?
+  "S105",
+  "S106",
 
-    # same?
-    "S105",
-    "S106",
+  "DTZ003",
+  "DTZ005",
 
-    "DTZ003",
-    "DTZ005",
+  "RSE102",
+  "SLF001",
 
-    "RSE102",
-    "SLF001",
+  # in tests
+  "DTZ001",
 
-    # in tests
-    "DTZ001",
+  "EM101",
+  "EM102",
+  "EM103",
 
-    "EM101",
-    "EM102",
-    "EM103",
+  "B904",
+  "B019",
 
-    "B904",
-    "B019",
+  "N801",
+  "N807",
 
-    "N801",
-    "N807",
+  # pandas
+  "PD",
 
-    # pandas
-    "PD",
+  "RUF012",
+  "PLC0105",
+  "FA102",
 
-    "RUF012",
-    "PLC0105",
-    "FA102",
+  # code complexity
+  "C",
+  "C901",
 
-    # code complexity
-    "C",
-    "C901",
+  # trailing commas
+  "COM812",
 
-    # trailing commas
-    "COM812",
+  "PLR",
+  "INP",
+  "TRY",
+  "SIM300",
+  "SIM114",
 
-    "PLR",
-    "INP",
-    "TRY",
-    "SIM300",
-    "SIM114",
-
-    "DJ008",
-    "TD002",
-    "TD003",
-    "FIX001",
-    "FIX002",
-    "FA100",
+  "DJ008",
+  "TD002",
+  "TD003",
+  "FIX001",
+  "FIX002",
+  "FA100",
 ]
 fix = true
 exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".hg",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "venv",
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
 ]
 src = ["src/strawberry_sqlalchemy_mapper", "tests"]
 
-[tool.ruff.per-file-ignores]
-"tests/*" = ["RSE102", "SLF001", "TCH001", "TCH002", "TCH003", "ANN001", "ANN201", "PLW0603", "PLC1901", "S603", "S607", "B018"]
+[tool.ruff.lint.per-file-ignores]
+"docs/conf.py" = ["ERA001", "PTH118", "PTH120"]
 "src/strawberry_sqlalchemy_mapper/field.py" = ["TCH001", "TCH002", "TCH003"]
+"src/strawberry_sqlalchemy_mapper/__init__.py" = ["UP036"]
+"tests/*" = [
+  "RSE102",
+  "SLF001",
+  "ANN001",
+  "ANN201",
+  "PLW0603",
+  "PLC1901",
+  "S603",
+  "S607",
+  "B018",
+]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["strawberry-sqlalchemy-mapper"]
-known-third-party = ["strwaberry"]
+known-third-party = ["strawberry"]
 extra-standard-library = ["typing_extensions"]
