@@ -109,7 +109,7 @@ async def test_node_async(
         await session.commit()
 
         session.add_all([f1, f2, f3])
-        session.commit()
+        await session.commit()
 
         for f in [f1, f2, f3]:
             result = await schema.execute(query, {"id": relay.to_base64("Fruit", f.id)})
@@ -266,7 +266,7 @@ async def test_nodes_async(
         await session.commit()
 
         session.add_all([f1, f2, f3])
-        session.commit()
+        await session.commit()
 
         result = await schema.execute(
             query,

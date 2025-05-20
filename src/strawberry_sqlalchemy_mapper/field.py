@@ -30,7 +30,9 @@ from typing_extensions import Annotated, TypeAlias
 
 from sqlakeyset.types import Keyset
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.future import select
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import Select
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
 from strawberry.extensions.field_extension import (
@@ -59,11 +61,11 @@ _SessionMaker: TypeAlias = Callable[[], Union[Session, AsyncSession]]
 assert argument  # type: ignore[truthy-function]
 
 
-connection_session: contextvars.ContextVar[
-    Union[Session, AsyncSession, None]
-] = contextvars.ContextVar(
-    "connection-session",
-    default=None,
+connection_session: contextvars.ContextVar[Union[Session, AsyncSession, None]] = (
+    contextvars.ContextVar(
+        "connection-session",
+        default=None,
+    )
 )
 
 
@@ -97,7 +99,7 @@ class StrawberrySQLAlchemyField(StrawberryField):
 @dataclasses.dataclass
 class StrawberrySQLAlchemyAsyncQuery:
     session: AsyncSession
-    query: Callable[[Session], Query]
+    query: Callable[[], Select]
     iterator: Iterator[Any] | None = None
     limit: int | None = None
     offset: int | None = None
@@ -120,16 +122,13 @@ class StrawberrySQLAlchemyAsyncQuery:
 
     async def __anext__(self):
         if self.iterator is None:
+            q = self.query()
+            if self.limit is not None:
+                q = q.limit(self.limit)
+            if self.offset is not None:
+                q = q.offset(self.offset)
 
-            def query_runner(s: Session):
-                q = self.query(s)
-                if self.limit is not None:
-                    q = q.limit(self.limit)
-                if self.offset is not None:
-                    q = q.offset(self.offset)
-                return list(q)
-
-            self.iterator = iter(await self.session.run_sync(query_runner))
+            self.iterator = iter(await self.session.scalars(q))
 
         try:
             return next(self.iterator)
@@ -325,7 +324,7 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
                 if session is None:
                     session = field_sessionmaker()
 
-                def _get_query(s: Session):
+                def _get_orm_query(s: Session):
                     if root is not None:
                         # root won't be None when resolving nested connections.
                         # TODO: Maybe we want to send this to a dataloader?
@@ -338,16 +337,29 @@ class StrawberrySQLAlchemyConnectionExtension(relay.ConnectionExtension):
 
                     return query
 
+                def _get_select_query():
+                    if root is not None:
+                        # root won't be None when resolving nested connections.
+                        # TODO: Maybe we want to send this to a dataloader?
+                        query = getattr(root, field.python_name)
+                    else:
+                        query = select(model)
+
+                    if field.keyset is not None:
+                        query = query.order_by(*field.keyset)
+
+                    return query
+
                 if isinstance(session, AsyncSession):
                     return cast(
                         Iterable[Any],
                         StrawberrySQLAlchemyAsyncQuery(
                             session=session,
-                            query=lambda s: _get_query(s),
+                            query=_get_select_query,
                         ),
                     )
 
-                return _get_query(session)
+                return _get_orm_query(session)
 
             field.base_resolver = StrawberryResolver(default_resolver)
 
@@ -415,8 +427,7 @@ def field(
     graphql_type: Any | None = None,
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
-) -> _T:
-    ...
+) -> _T: ...
 
 
 @overload
@@ -437,8 +448,7 @@ def field(
     graphql_type: Any | None = None,
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 @overload
@@ -459,8 +469,7 @@ def field(
     graphql_type: Any | None = None,
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
-) -> StrawberrySQLAlchemyField:
-    ...
+) -> StrawberrySQLAlchemyField: ...
 
 
 def field(
@@ -599,8 +608,7 @@ def connection(
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
     keyset: Keyset | None = None,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 @overload
@@ -622,8 +630,7 @@ def connection(
     extensions: Sequence[FieldExtension] = (),
     sessionmaker: _SessionMaker | None = None,
     keyset: Keyset | None = None,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 def connection(
