@@ -135,9 +135,7 @@ async def test_query_async(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=async_sessionmaker
-        )
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=async_sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 
@@ -198,9 +196,7 @@ async def test_query_async_with_first(
 
     @strawberry.type
     class Query:
-        fruits: relay.ListConnection[Fruit] = connection(
-            sessionmaker=async_sessionmaker
-        )
+        fruits: relay.ListConnection[Fruit] = connection(sessionmaker=async_sessionmaker)
 
     schema = strawberry.Schema(query=Query)
 

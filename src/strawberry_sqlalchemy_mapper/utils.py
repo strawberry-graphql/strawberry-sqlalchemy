@@ -14,13 +14,11 @@ _T = TypeVar("_T", bound=type)
 
 
 @overload
-def unwrap_type(type_: StrawberryContainer) -> StrawberryType | type:
-    ...
+def unwrap_type(type_: StrawberryContainer) -> StrawberryType | type: ...
 
 
 @overload
-def unwrap_type(type_: _T) -> _T:
-    ...
+def unwrap_type(type_: _T) -> _T: ...
 
 
 def unwrap_type(type_):
