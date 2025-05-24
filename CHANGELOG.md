@@ -1,6 +1,21 @@
 CHANGELOG
 =========
 
+0.6.2 - 2025-05-24
+------------------
+
+This release does not introduce any new features or bug fixes. It focuses solely on internal code quality improvements.
+
+Changes:
+- Added Mypy configuration aligned with the main Strawberry project.
+- Enforced type checking via CI to ensure consistency.
+- Ran pre-commit across all files to standardize formatting and follow the project's linting architecture.
+
+These changes aim to improve maintainability and ensure better development practices moving forward.
+
+Contributed by [Luis Gustavo](https://github.com/Ckk3) via [PR #250](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/250/)
+
+
 0.6.1 - 2025-05-13
 ------------------
 
