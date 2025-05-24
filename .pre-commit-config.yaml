@@ -1,15 +1,13 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.4.0
-    hooks:
-      - id: black
-        exclude: ^tests/\w+/snapshots/
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.7
+    # Ruff version.
+    rev: v0.11.10
     hooks:
-      - id: ruff
-        exclude: ^tests/\w+/snapshots/
+      # Run the linter.
+      - id: ruff-check
+        args: [--fix]
+      # Run the formatter.
+      - id: ruff-format
 
   - repo: https://github.com/patrick91/pre-commit-alex
     rev: aa5da9e54b92ab7284feddeaf52edf14b1690de3
@@ -37,3 +35,9 @@ repos:
     hooks:
       - id: blacken-docs
         args: [--skip-errors]
+
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+        files: \.(toml)$
