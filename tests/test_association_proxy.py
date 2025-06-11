@@ -114,7 +114,6 @@ def tables_with_association_proxy_and_nullable_relationship(
 def test_relationships_schema_with_association_proxy_should_raise_UnsupportedAssociationProxyTarget(
     tables_with_wrong_association_proxy, mapper
 ):
-
     EmployeeModel, DepartmentModel = tables_with_wrong_association_proxy
 
     @mapper.type(EmployeeModel)
@@ -136,7 +135,6 @@ def test_relationships_schema_with_association_proxy_should_raise_UnsupportedAss
 def test_relationships_schema_with_association_proxy_should_not_raise_UnsupportedAssociationProxyTarget_if_excluded(
     tables_with_wrong_association_proxy, mapper
 ):
-
     EmployeeModel, DepartmentModel = tables_with_wrong_association_proxy
 
     @mapper.type(EmployeeModel)
@@ -165,7 +163,6 @@ def test_relationships_schema_with_association_proxy(
     tables_with_association_proxy,
     mapper,
 ):
-
     BuildingModel, DepartmentModel, EmployeeModel = tables_with_association_proxy
 
     @mapper.type(EmployeeModel)
