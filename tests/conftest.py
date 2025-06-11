@@ -125,13 +125,12 @@ def default_employee_department_join_table(base):
     EmployeeDepartmentJoinTable = sqlalchemy.Table(
         "employee_department_join_table",
         base.metadata,
-        sqlalchemy.Column(
-            "employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True
-        ),
+        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
         sqlalchemy.Column(
             "department_id", sqlalchemy.ForeignKey("department.id"), primary_key=True
         ),
     )
+    return EmployeeDepartmentJoinTable
 
 
 @pytest.fixture
@@ -200,18 +199,12 @@ def secondary_tables_with_another_foreign_key(base):
 
 
 @pytest.fixture
-def secondary_tables_with_more_secondary_tables(
-    base, default_employee_department_join_table
-):
+def secondary_tables_with_more_secondary_tables(base, default_employee_department_join_table):
     EmployeeBuildingJoinTable = sqlalchemy.Table(
         "employee_building_join_table",
         base.metadata,
-        sqlalchemy.Column(
-            "employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True
-        ),
-        sqlalchemy.Column(
-            "building_id", sqlalchemy.ForeignKey("building.id"), primary_key=True
-        ),
+        sqlalchemy.Column("employee_id", sqlalchemy.ForeignKey("employee.id"), primary_key=True),
+        sqlalchemy.Column("building_id", sqlalchemy.ForeignKey("building.id"), primary_key=True),
     )
 
     class Employee(base):
@@ -281,9 +274,7 @@ def secondary_tables_with_use_list_false(base, default_employee_department_join_
 
 
 @pytest.fixture
-def secondary_tables_with_normal_relationship(
-    base, default_employee_department_join_table
-):
+def secondary_tables_with_normal_relationship(base, default_employee_department_join_table):
     class Employee(base):
         __tablename__ = "employee"
         id = sqlalchemy.Column(sqlalchemy.Integer, autoincrement=True, primary_key=True)
@@ -294,9 +285,7 @@ def secondary_tables_with_normal_relationship(
             secondary="employee_department_join_table",
             back_populates="employees",
         )
-        building_id = sqlalchemy.Column(
-            sqlalchemy.Integer, sqlalchemy.ForeignKey("building.id")
-        )
+        building_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("building.id"))
         building = orm.relationship(
             "Building",
             back_populates="employees",
@@ -527,7 +516,7 @@ def expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_li
 
 
 @pytest.fixture
-def expected_schema_from_secondary_tables_with_more_secondary_tables_with__with_normal_relationship():
+def expected_schema_from_secondary_tables_with_more_secondary_tables_with_normal_relationship():
     return '''
     type Building {
       id: Int!

@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import Column, ForeignKey, Integer, String, Table
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader
 from strawberry_sqlalchemy_mapper.exc import InvalidLocalRemotePairs
@@ -61,10 +61,7 @@ async def test_loader_for(engine, base, sessionmaker, many_to_one_tables):
         assert loader.load_fn is not None
 
         key = tuple(
-            [
-                getattr(e1, local.key)
-                for local, _ in Employee.department.property.local_remote_pairs
-            ]
+            getattr(e1, local.key) for local, _ in Employee.department.property.local_remote_pairs
         )
         department = await loader.load(key)
         assert department.name == "d2"
@@ -99,10 +96,7 @@ async def test_loader_with_async_session(
         await session.commit()
         d2_id = d2.id
         department_loader_key = tuple(
-            [
-                getattr(e1, local.key)
-                for local, _ in Employee.department.property.local_remote_pairs
-            ]
+            getattr(e1, local.key) for local, _ in Employee.department.property.local_remote_pairs
         )
     base_loader = StrawberrySQLAlchemyLoader(async_bind_factory=async_sessionmaker)
     loader = base_loader.loader_for(Employee.department.property)
@@ -115,12 +109,12 @@ async def test_loader_with_async_session(
     assert {e.name for e in employees} == {"e1"}
 
 
-def create_default_data_on_secondary_table_tests(session, Employee, Department):
-    e1 = Employee(name="e1", id=1)
-    e2 = Employee(name="e2", id=2)
-    d1 = Department(name="d1")
-    d2 = Department(name="d2")
-    d3 = Department(name="d3")
+def create_default_data_on_secondary_table_tests(session, employee, department):
+    e1 = employee(name="e1", id=1)
+    e2 = employee(name="e2", id=2)
+    d1 = department(name="d1")
+    d2 = department(name="d2")
+    d3 = department(name="d3")
     session.add_all([e1, e2, d1, d2, d3])
     session.flush()
 
@@ -136,7 +130,9 @@ async def test_loader_for_secondary_table(engine, base, sessionmaker, secondary_
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -144,8 +140,7 @@ async def test_loader_for_secondary_table(engine, base, sessionmaker, secondary_
 
         key = tuple(
             [
-                getattr(
-                    e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
             ]
         )
 
@@ -154,12 +149,16 @@ async def test_loader_for_secondary_table(engine, base, sessionmaker, secondary_
 
 
 @pytest.mark.asyncio
-async def test_loader_for_secondary_tables_with_another_foreign_key(engine, base, sessionmaker, secondary_tables_with_another_foreign_key):
+async def test_loader_for_secondary_tables_with_another_foreign_key(
+    engine, base, sessionmaker, secondary_tables_with_another_foreign_key
+):
     Employee, Department = secondary_tables_with_another_foreign_key
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -167,8 +166,7 @@ async def test_loader_for_secondary_tables_with_another_foreign_key(engine, base
 
         key = tuple(
             [
-                getattr(
-                    e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
             ]
         )
 
@@ -177,13 +175,17 @@ async def test_loader_for_secondary_tables_with_another_foreign_key(engine, base
 
 
 @pytest.mark.asyncio
-async def test_loader_for_secondary_tables_with_more_secondary_tables(engine, base, sessionmaker, secondary_tables_with_more_secondary_tables):
+async def test_loader_for_secondary_tables_with_more_secondary_tables(
+    engine, base, sessionmaker, secondary_tables_with_more_secondary_tables
+):
     Employee, Department, Building = secondary_tables_with_more_secondary_tables
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
-        
+        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
+
         b1 = Building(id=2, name="Building 1")
         b1.employees.append(e1)
         b1.employees.append(e2)
@@ -195,8 +197,7 @@ async def test_loader_for_secondary_tables_with_more_secondary_tables(engine, ba
 
         key = tuple(
             [
-                getattr(
-                    e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
             ]
         )
 
@@ -205,12 +206,16 @@ async def test_loader_for_secondary_tables_with_more_secondary_tables(engine, ba
 
 
 @pytest.mark.asyncio
-async def test_loader_for_secondary_tables_with_use_list_false(engine, base, sessionmaker, secondary_tables_with_use_list_false):
+async def test_loader_for_secondary_tables_with_use_list_false(
+    engine, base, sessionmaker, secondary_tables_with_use_list_false
+):
     Employee, Department = secondary_tables_with_use_list_false
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
@@ -218,22 +223,25 @@ async def test_loader_for_secondary_tables_with_use_list_false(engine, base, ses
 
         key = tuple(
             [
-                getattr(
-                    e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
             ]
         )
 
         departments = await loader.load(key)
         assert {d.name for d in departments} == {"d1"}
 
-    
+
 @pytest.mark.asyncio
-async def test_loader_for_secondary_tables_with_normal_relationship(engine, base, sessionmaker, secondary_tables_with_normal_relationship):
+async def test_loader_for_secondary_tables_with_normal_relationship(
+    engine, base, sessionmaker, secondary_tables_with_normal_relationship
+):
     Employee, Department, Building = secondary_tables_with_normal_relationship
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(session=session, Employee=Employee, Department=Department)
+        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
 
         b1 = Building(id=2, name="Building 1")
         b1.employees.append(e1)
@@ -246,8 +254,7 @@ async def test_loader_for_secondary_tables_with_normal_relationship(engine, base
 
         key = tuple(
             [
-                getattr(
-                    e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
             ]
         )
 
@@ -256,7 +263,9 @@ async def test_loader_for_secondary_tables_with_normal_relationship(engine, base
 
 
 @pytest.mark.asyncio
-async def test_loader_for_secondary_tables_should_raise_exception_if_relationship_dont_has_local_remote_pairs(engine, base, sessionmaker, secondary_tables_with_normal_relationship):
+async def test_loader_secondary_tables_should_raise_exc_if_relationship_dont_has_local_remote_pairs(
+    engine, base, sessionmaker, secondary_tables_with_normal_relationship
+):
     Employee, Department, Building = secondary_tables_with_normal_relationship
     base.metadata.create_all(engine)
 
@@ -265,6 +274,6 @@ async def test_loader_for_secondary_tables_should_raise_exception_if_relationshi
 
         Employee.department.property.local_remote_pairs = []
         loader = base_loader.loader_for(Employee.department.property)
-        
+
         with pytest.raises(expected_exception=InvalidLocalRemotePairs):
             await loader.load((1,))

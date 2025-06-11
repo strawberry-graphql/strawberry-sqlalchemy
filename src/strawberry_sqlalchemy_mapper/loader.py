@@ -77,10 +77,7 @@ class StrawberrySQLAlchemyLoader:
                 def _build_normal_relationship_query(related_model, relationship, keys):
                     return select(related_model).filter(
                         tuple_(
-                            *[
-                                remote
-                                for _, remote in relationship.local_remote_pairs or []
-                            ]
+                            *[remote for _, remote in relationship.local_remote_pairs or []]
                         ).in_(keys)
                     )
 
@@ -95,12 +92,8 @@ class StrawberrySQLAlchemyLoader:
                             f"{related_model.__name__} -- {self_model.__name__}"
                         )
 
-                    self_model_key_label = str(
-                        relationship.local_remote_pairs[0][1].key
-                    )
-                    related_model_key_label = str(
-                        relationship.local_remote_pairs[1][1].key
-                    )
+                    self_model_key_label = str(relationship.local_remote_pairs[0][1].key)
+                    related_model_key_label = str(relationship.local_remote_pairs[1][1].key)
 
                     self_model_key = str(relationship.local_remote_pairs[0][0].key)
                     related_model_key = str(relationship.local_remote_pairs[1][0].key)
@@ -111,9 +104,7 @@ class StrawberrySQLAlchemyLoader:
                     # This query returns rows in this format -> (self_model.key, related_model)
                     return (
                         select(
-                            getattr(self_model, self_model_key).label(
-                                self_model_key_label
-                            ),
+                            getattr(self_model, self_model_key).label(self_model_key_label),
                             related_model,
                         )
                         .join(
@@ -170,10 +161,7 @@ class StrawberrySQLAlchemyLoader:
                 if relationship.uselist:
                     return [grouped_keys[key] for key in keys]
                 else:
-                    return [
-                        grouped_keys[key][0] if grouped_keys[key] else None
-                        for key in keys
-                    ]
+                    return [grouped_keys[key][0] if grouped_keys[key] else None for key in keys]
 
             self._loaders[relationship] = DataLoader(load_fn=load_fn)
             return self._loaders[relationship]
