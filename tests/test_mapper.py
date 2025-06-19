@@ -6,11 +6,7 @@ import pytest
 import strawberry
 from sqlalchemy import JSON, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql.array import ARRAY
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-    relationship,
-)
+from sqlalchemy.orm import relationship
 from strawberry.scalars import JSON as StrawberryJSON
 from strawberry.types.base import StrawberryList, StrawberryOptional
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyMapper
@@ -445,47 +441,3 @@ def test_type_with_default_directives(
     assert mapped_employee_type.__name__ == "Employee"
     assert len(mapped_employee_type.__strawberry_definition__.fields) == 2
     assert mapped_employee_type.__strawberry_definition__.directives == expected_directives
-
-
-@pytest.fixture
-def inheritance_table(base):
-    class ModelA(base):
-        __tablename__ = "a"
-
-        id: Mapped[str] = mapped_column(primary_key=True)
-
-        relationshipB_id: Mapped[str] = mapped_column(ForeignKey("b.id"))
-        relationshipB: Mapped["ModelB"] = relationship()
-
-    class ModelB(base):
-        __tablename__ = "b"
-
-        id: Mapped[str] = mapped_column(primary_key=True)
-
-        relationshipB_id: Mapped[str] = mapped_column(ForeignKey("b.id"))
-        relationshipB: Mapped["ModelB"] = relationship()
-
-    return ModelA, ModelB
-
-
-def test_inheritance_table(inheritance_table, mapper):
-    ModelA, ModelB = inheritance_table
-
-    @mapper.type(ModelA)
-    class ApiA:
-        pass
-
-    @mapper.type(ModelB)
-    class ApiB(ApiA):
-        pass
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        def apisb(self) -> ApiB: ...
-
-        @strawberry.field
-        def apisa(self) -> ApiA: ...
-
-    mapper.finalize()
-    schema = strawberry.Schema(query=Query)

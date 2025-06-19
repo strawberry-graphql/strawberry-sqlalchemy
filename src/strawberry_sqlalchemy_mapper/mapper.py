@@ -27,6 +27,7 @@ from typing import (
     Protocol,
     Sequence,
     Set,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -651,29 +652,39 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         ```
         """
 
-        def convert(type_: Any) -> Any:
-            old_annotations = getattr(type_, "__annotations__", {})
-            type_.__annotations__ = {k: v for k, v in old_annotations.items() if is_private(v)}
-            mapper: Mapper = cast("Mapper", inspect(model))
-            generated_field_keys = []
+        def _get_generated_field_keys(type_, old_annotations) -> Tuple[List[str], Dict[str, Any]]:
+            generated_field_keys = set()
 
-            excluded_keys = getattr(type_, "__exclude__", [])
-            list_keys = getattr(type_, "__use_list__", [])
-
-            # if the type inherits from another mapped type, then it may have
-            # generated resolvers. These will be treated by dataclasses as having
-            # a default value, which will likely cause issues because of keys
-            # that don't have default values. To fix this, we wrap them in
-            # `strawberry.field()` (like when they were originally made), so
-            # dataclasses will ignore them.
-            # TODO: Potentially raise/fix this issue upstream
             for key in dir(type_):
                 val = getattr(type_, key)
                 if getattr(val, _IS_GENERATED_RESOLVER_KEY, False):
                     setattr(type_, key, field(resolver=val))
-                    generated_field_keys.append(key)
+                    generated_field_keys.add(key)
 
-            self._handle_columns(mapper, type_, excluded_keys, generated_field_keys)
+            # Checks for an original type annotation, useful in resolving inheritance-related types
+            if original_type := getattr(type_, _ORIGINAL_TYPE_KEY, None):
+                for key in dir(original_type):
+                    val = getattr(original_type, key)
+                    if getattr(val, _IS_GENERATED_RESOLVER_KEY, False):
+                        setattr(type_, key, field(resolver=val))
+                        generated_field_keys.add(key)
+                        old_annotations[key] = original_type.__annotations__[key]
+
+            return list(generated_field_keys), old_annotations
+
+        def convert(type_: Any) -> Any:
+            old_annotations = getattr(type_, "__annotations__", {})
+            type_.__annotations__ = {k: v for k, v in old_annotations.items() if is_private(v)}
+            mapper: Mapper = cast("Mapper", inspect(model))
+
+            excluded_keys = getattr(type_, "__exclude__", [])
+            list_keys = getattr(type_, "__use_list__", [])
+
+            generated_field_keys, old_annotations = _get_generated_field_keys(
+                type_, old_annotations
+            )
+
+            self._handle_columns(mapper, type_, excluded_keys, list(generated_field_keys))
             relationship: RelationshipProperty
             for key, relationship in mapper.relationships.items():
                 if key in excluded_keys or key in type_.__annotations__ or hasattr(type_, key):
