@@ -56,18 +56,18 @@ def _get_test_types_with_inheritance_schema():
     return '''
 type ApiB {
   id: String!
-  relationshipBId: String!
-  relationshipB: ModelB!
-  parentId: String!
-  parent: ModelB!
+  relationshipBId: String
+  relationshipB: ModelB
+  parentId: String
+  parent: ModelB
   relatedA: ModelAConnection!
   children: ModelBConnection!
 }
 
 type ModelA {
   id: String!
-  relationshipBId: String!
-  relationshipB: ModelB!
+  relationshipBId: String
+  relationshipB: ModelB
 }
 
 type ModelAConnection {
@@ -86,8 +86,8 @@ type ModelAEdge {
 
 type ModelB {
   id: String!
-  parentId: String!
-  parent: ModelB!
+  parentId: String
+  parent: ModelB
   relatedA: ModelAConnection!
   children: ModelBConnection!
 }
@@ -124,7 +124,6 @@ type PageInfo {
 type Query {
   apisb: ApiB!
 }
-
 
     '''
 
@@ -156,17 +155,17 @@ def _get_test_types_with_inheritance_schema_should_respect_exclude_fields():
     return '''
 type ApiB {
   id: String!
-  relationshipB: ModelB!
-  parentId: String!
-  parent: ModelB!
+  relationshipB: ModelB
+  parentId: String
+  parent: ModelB
   relatedA: ModelAConnection!
   children: ModelBConnection!
 }
 
 type ModelA {
   id: String!
-  relationshipBId: String!
-  relationshipB: ModelB!
+  relationshipBId: String
+  relationshipB: ModelB
 }
 
 type ModelAConnection {
@@ -185,8 +184,8 @@ type ModelAEdge {
 
 type ModelB {
   id: String!
-  parentId: String!
-  parent: ModelB!
+  parentId: String
+  parent: ModelB
   relatedA: ModelAConnection!
   children: ModelBConnection!
 }
@@ -223,7 +222,6 @@ type PageInfo {
 type Query {
   apisb: ApiB!
 }
-
 
     '''
 
