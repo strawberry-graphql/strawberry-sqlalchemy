@@ -684,7 +684,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 type_, old_annotations
             )
 
-            self._handle_columns(mapper, type_, excluded_keys, list(generated_field_keys))
+            self._handle_columns(mapper, type_, excluded_keys, generated_field_keys)
             relationship: RelationshipProperty
             for key, relationship in mapper.relationships.items():
                 if key in excluded_keys or key in type_.__annotations__ or hasattr(type_, key):

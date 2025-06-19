@@ -3,11 +3,7 @@ import textwrap
 import pytest
 import strawberry
 from sqlalchemy import Column, ForeignKey, Integer, String
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-    relationship,
-)
+from sqlalchemy.orm import relationship
 
 
 @pytest.fixture
@@ -15,22 +11,20 @@ def inheritance_table(base):
     class ModelA(base):
         __tablename__ = "a"
 
-        id: Mapped[str] = mapped_column(primary_key=True)
+        id = Column(String, primary_key=True)
 
-        relationshipB_id: Mapped[str] = mapped_column(ForeignKey("b.id"))
-        relationshipB: Mapped["ModelB"] = relationship()
+        relationshipB_id = Column(String, ForeignKey("b.id"))
+        relationshipB = relationship("ModelB", back_populates="related_a")
 
     class ModelB(base):
         __tablename__ = "b"
 
-        id: Mapped[str] = mapped_column(primary_key=True)
+        id = Column(String, primary_key=True)
 
-        parent_id: Mapped[str] = mapped_column(ForeignKey("b.id"))
-        parent: Mapped["ModelB"] = relationship(
-            "ModelB", remote_side="ModelB.id", backref="children"
-        )
+        parent_id = Column(String, ForeignKey("b.id"))
+        parent = relationship("ModelB", remote_side="ModelB.id", backref="children")
 
-        related_a: Mapped[list["ModelA"]] = relationship("ModelA", back_populates="relationshipB")
+        related_a = relationship("ModelA", back_populates="relationshipB")
 
     return ModelA, ModelB
 
@@ -239,15 +233,13 @@ def inheritance_table_with_duplicated_fields(base):
     class ModelA(base):
         __tablename__ = "a"
 
-        id: Mapped[str] = mapped_column(primary_key=True)
-
+        id = Column(String, primary_key=True)
         example_field = Column(String(50))
 
     class ModelB(base):
         __tablename__ = "b"
 
-        id: Mapped[str] = mapped_column(primary_key=True)
-
+        id = Column(String, primary_key=True)
         example_field = Column(Integer, autoincrement=True, primary_key=True)
 
     return ModelA, ModelB
