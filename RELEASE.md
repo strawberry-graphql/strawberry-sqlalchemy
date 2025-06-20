@@ -59,7 +59,7 @@ class ApiA:
 
 @mapper.type(ModelB)
 class ApiB(ApiA):
-    # example_field will be taken from ModelB and will be a Integer
+    # example_field will be taken from ModelB and will be an Integer
     pass
 ```
 
