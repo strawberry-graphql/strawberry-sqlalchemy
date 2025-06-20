@@ -189,7 +189,7 @@ class ApiA:
 class ApiB(ApiA):
     # Inherits fields from ApiA, except "id"
     # "common_field" will come from ModelB, not ModelA, so it will be a Integer
-    # "extra_field" will be overrided and will be a float now instead of the String type declared in ModelB:
+    # "extra_field" will be overridden and will be a float now instead of the String type declared in ModelB:
     extra_field: float = strawberry.field(name="extraField")
 ```
 ## Limitations
