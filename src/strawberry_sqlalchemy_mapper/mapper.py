@@ -654,6 +654,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
 
         def _get_generated_field_keys(type_, old_annotations) -> Tuple[List[str], Dict[str, Any]]:
+            old_annotations = old_annotations.copy()
             generated_field_keys = set()
 
             for key in dir(type_):
