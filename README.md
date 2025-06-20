@@ -152,6 +152,46 @@ query {
 """
 ```
 
+### Type Inheritance
+
+You can inherit fields from other mapped types using standard Python class inheritance.
+
+- Fields from the parent type (e.g., ApiA) are inherited by the child (e.g., ApiB).
+
+- The `__exclude__` setting applies to inherited fields.
+
+- If both SQLAlchemy models define the same field name, the field from the model inside `.type(...)` takes precedence.
+
+- Declaring a field manually in the mapped type overrides everything else.
+
+```python
+class ModelA(base):
+    __tablename__ = "a"
+
+    id = Column(String, primary_key=True)
+    common_field = Column(String(50))
+
+
+class ModelB(base):
+    __tablename__ = "b"
+
+    id = Column(String, primary_key=True)
+    common_field = Column(Integer)  # Conflicting field
+    extra_field = Column(String(50))
+
+
+@mapper.type(ModelA)
+class ApiA:
+    __exclude__ = ["id"]  # This field will be excluded in ApiA (and its children)
+
+
+@mapper.type(ModelB)
+class ApiB(ApiA):
+    # Inherits fields from ApiA, except "id"
+    # "common_field" will come from ModelB, not ModelA, so it will be a Integer
+    # "extra_field" will be overrided and will be a float now instead of the String type declared in ModelB:
+    extra_field: float = strawberry.field(name="extraField")
+```
 ## Limitations
 
 ### Supported Types
