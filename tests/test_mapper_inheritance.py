@@ -238,7 +238,8 @@ def inheritance_table_with_duplicated_fields(base):
         __tablename__ = "b"
 
         id = Column(String, primary_key=True)
-        example_field = Column(Integer, autoincrement=True, primary_key=True)
+        example_field = Column(Integer, autoincrement=True)
+        name = Column(String(50))
 
     return ModelA, ModelB
 
@@ -280,7 +281,8 @@ type ApiA {
 
 type ApiB {
   id: String!
-  exampleField: Int!
+  exampleField: Int
+  name: String
 }
 
 type Query {
@@ -291,4 +293,50 @@ type Query {
 """
 
 
-# TODO: test inheritance with a empty (class)
+def test_types_with_inheritance_should_override_inherited_fields_when_declared(
+    inheritance_table_with_duplicated_fields, mapper
+):
+    ModelA, ModelB = inheritance_table_with_duplicated_fields
+
+    @mapper.type(ModelA)
+    class ApiA:
+        pass
+
+    @mapper.type(ModelB)
+    class ApiB(ApiA):
+        example_field: float = strawberry.field(name="exampleField")
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def apisb(self) -> ApiB: ...
+
+        @strawberry.field
+        def apisa(self) -> ApiA: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    expected = _get_test_types_with_inheritance_and_declared_fields()
+    assert str(schema) == textwrap.dedent(expected).strip()
+
+
+def _get_test_types_with_inheritance_and_declared_fields():
+    return """
+type ApiA {
+  id: String!
+  exampleField: String
+}
+
+type ApiB {
+  id: String!
+  exampleField: Float!
+  name: String
+}
+
+type Query {
+  apisb: ApiB!
+  apisa: ApiA!
+}
+
+"""

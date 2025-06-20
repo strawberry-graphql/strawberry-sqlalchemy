@@ -32,6 +32,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    get_type_hints,
     overload,
 )
 from typing_extensions import Self
@@ -664,11 +665,20 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             # Checks for an original type annotation, useful in resolving inheritance-related types
             if original_type := getattr(type_, _ORIGINAL_TYPE_KEY, None):
                 for key in dir(original_type):
+                    if key.startswith("__") and key.endswith("__"):
+                        continue
+
                     val = getattr(original_type, key)
                     if getattr(val, _IS_GENERATED_RESOLVER_KEY, False):
                         setattr(type_, key, field(resolver=val))
                         generated_field_keys.add(key)
-                        old_annotations[key] = original_type.__annotations__[key]
+                        try:
+                            annotations = get_type_hints(original_type)
+                        except Exception:
+                            annotations = original_type.__annotations__
+
+                        if key in annotations:
+                            old_annotations[key] = annotations[key]
 
             return list(generated_field_keys), old_annotations
 
@@ -809,7 +819,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             # because the pre-existing fields might have default values,
             # which will cause the mapped fields to fail
             # (because they may not have default values)
-            type_.__annotations__.update(old_annotations)
+
+            # For Python versions <= 3.9, only update annotations that don't already exist
+            # because this versions handle inherance differently
+            if sys.version_info[:2] <= (3, 9):
+                for k, v in old_annotations.items():
+                    if k not in type_.__annotations__:
+                        type_.__annotations__[k] = v
+            else:
+                type_.__annotations__.update(old_annotations)
 
             if make_interface:
                 mapped_type = strawberry.interface(type_)
