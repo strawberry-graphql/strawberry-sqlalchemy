@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+0.6.3 - 2025-06-21
+------------------
+
+This update helps verify compatibility with Python 3.13.
+
+- Added new test environments in the CI pipeline to ensure compatibility with Python 3.13.
+- No changes to runtime code or dependencies.
+
+Contributed by [Luis Gustavo](https://github.com/Ckk3) via [PR #254](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/254/)
+
+
 0.6.2 - 2025-05-24
 ------------------
 
