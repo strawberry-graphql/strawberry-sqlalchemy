@@ -48,7 +48,10 @@ greenlet = { version = ">=3.0.0rc1", python = ">=3.12" }
 sqlakeyset = "^2.0.1695177552"
 
 [tool.poetry.group.dev.dependencies]
-asyncpg = ">=0.28,<0.30"
+asyncpg = [
+  { version = ">=0.28,<0.30", python = "<3.13" },
+  { version = ">=0.30", python = ">=3.13" },
+]
 importlib-metadata = ">=4.11.1,<8.0.0"
 mypy = "1.8.0"
 nox = "^2023.4.22"
