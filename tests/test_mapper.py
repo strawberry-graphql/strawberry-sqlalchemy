@@ -365,6 +365,155 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
+def test_relationships_schema_with_secondary_tables(
+    secondary_tables, mapper, expected_schema_from_secondary_tables
+):
+    EmployeeModel, DepartmentModel = secondary_tables
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables).strip()
+
+
+def test_relationships_schema_with_secondary_tables_with_another_foreign_key(
+    secondary_tables_with_another_foreign_key,
+    mapper,
+    expected_schema_from_secondary_tables,
+):
+    EmployeeModel, DepartmentModel = secondary_tables_with_another_foreign_key
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    assert str(schema) == textwrap.dedent(expected_schema_from_secondary_tables).strip()
+
+
+def test_relationships_schema_with_secondary_tables_with_more_secondary_tables(
+    secondary_tables_with_more_secondary_tables,
+    mapper,
+    expected_schema_from_secondary_tables_with_more_secondary_tables,
+):
+    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_more_secondary_tables
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    assert (
+        str(schema)
+        == textwrap.dedent(expected_schema_from_secondary_tables_with_more_secondary_tables).strip()
+    )
+
+
+def test_relationships_schema_with_secondary_tables_with_use_list_false(
+    secondary_tables_with_use_list_false,
+    mapper,
+    expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false,
+):
+    EmployeeModel, DepartmentModel = secondary_tables_with_use_list_false
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    assert (
+        str(schema)
+        == textwrap.dedent(
+            expected_schema_from_secondary_tables_with_more_secondary_tables_with_use_list_false
+        ).strip()
+    )
+
+
+def test_relationships_schema_with_secondary_tables_with_normal_relationship(
+    secondary_tables_with_normal_relationship,
+    mapper,
+    expected_schema_from_secondary_tables_with_more_secondary_tables_with_normal_relationship,
+):
+    EmployeeModel, DepartmentModel, BuildingModel = secondary_tables_with_normal_relationship
+
+    @mapper.type(EmployeeModel)
+    class Employee:
+        pass
+
+    @mapper.type(DepartmentModel)
+    class Department:
+        pass
+
+    @mapper.type(BuildingModel)
+    class Building:
+        pass
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def departments(self) -> List[Department]: ...
+
+    mapper.finalize()
+    schema = strawberry.Schema(query=Query)
+
+    assert (
+        str(schema)
+        == textwrap.dedent(
+            expected_schema_from_secondary_tables_with_more_secondary_tables_with_normal_relationship
+        ).strip()
+    )
+
+
 @pytest.mark.parametrize(
     "directives",
     [

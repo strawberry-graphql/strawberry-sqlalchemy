@@ -1,7 +1,8 @@
 import pytest
-from sqlalchemy import Column, ForeignKey, Integer, String, Table
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader
+from strawberry_sqlalchemy_mapper.exc import InvalidLocalRemotePairs
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -22,38 +23,6 @@ def many_to_one_tables(base):
         name = Column(String, nullable=False)
         employees = relationship("Employee", back_populates="department")
         __mapper_args__ = {"eager_defaults": True}
-
-    return Employee, Department
-
-
-@pytest.fixture
-def secondary_tables(base):
-    EmployeeDepartmentJoinTable = Table(
-        "employee_department_join_table",
-        base.metadata,
-        Column("employee_id", ForeignKey("employee.e_id"), primary_key=True),
-        Column("department_id", ForeignKey("department.d_id"), primary_key=True),
-    )
-
-    class Employee(base):
-        __tablename__ = "employee"
-        e_id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        departments = relationship(
-            "Department",
-            secondary="employee_department_join_table",
-            back_populates="employees",
-        )
-
-    class Department(base):
-        __tablename__ = "department"
-        d_id = Column(Integer, autoincrement=True, primary_key=True)
-        name = Column(String, nullable=False)
-        employees = relationship(
-            "Employee",
-            secondary="employee_department_join_table",
-            back_populates="departments",
-        )
 
     return Employee, Department
 
@@ -140,36 +109,171 @@ async def test_loader_with_async_session(
     assert {e.name for e in employees} == {"e1"}
 
 
-@pytest.mark.xfail
+def create_default_data_on_secondary_table_tests(session, employee, department):
+    e1 = employee(name="e1", id=1)
+    e2 = employee(name="e2", id=2)
+    d1 = department(name="d1")
+    d2 = department(name="d2")
+    d3 = department(name="d3")
+    session.add_all([e1, e2, d1, d2, d3])
+    session.flush()
+
+    e1.department.append(d1)
+    e1.department.append(d2)
+    e2.department.append(d2)
+    return e1, e2, d1, d2, d3
+
+
 @pytest.mark.asyncio
-async def test_loader_for_secondary(engine, base, sessionmaker, secondary_tables):
+async def test_loader_for_secondary_table(engine, base, sessionmaker, secondary_tables):
     Employee, Department = secondary_tables
     base.metadata.create_all(engine)
 
     with sessionmaker() as session:
-        e1 = Employee(name="e1")
-        e2 = Employee(name="e2")
-        d1 = Department(name="d1")
-        d2 = Department(name="d2")
-        session.add(e1)
-        session.add(e2)
-        session.add(d1)
-        session.add(d2)
-        session.flush()
-
-        e1.departments.append(d1)
-        e1.departments.append(d2)
-        e2.departments.append(d2)
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
-        loader = base_loader.loader_for(Employee.departments.property)
+        loader = base_loader.loader_for(Employee.department.property)
 
         key = tuple(
             [
-                getattr(e1, local.key)
-                for local, _ in Employee.departments.property.local_remote_pairs
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
             ]
         )
+
         departments = await loader.load(key)
         assert {d.name for d in departments} == {"d1", "d2"}
+
+
+@pytest.mark.asyncio
+async def test_loader_for_secondary_tables_with_another_foreign_key(
+    engine, base, sessionmaker, secondary_tables_with_another_foreign_key
+):
+    Employee, Department = secondary_tables_with_another_foreign_key
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
+        session.commit()
+
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+        loader = base_loader.loader_for(Employee.department.property)
+
+        key = tuple(
+            [
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+            ]
+        )
+
+        departments = await loader.load(key)
+        assert {d.name for d in departments} == {"d1", "d2"}
+
+
+@pytest.mark.asyncio
+async def test_loader_for_secondary_tables_with_more_secondary_tables(
+    engine, base, sessionmaker, secondary_tables_with_more_secondary_tables
+):
+    Employee, Department, Building = secondary_tables_with_more_secondary_tables
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
+
+        b1 = Building(id=2, name="Building 1")
+        b1.employees.append(e1)
+        b1.employees.append(e2)
+        session.add(b1)
+        session.commit()
+
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+        loader = base_loader.loader_for(Employee.department.property)
+
+        key = tuple(
+            [
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+            ]
+        )
+
+        departments = await loader.load(key)
+        assert {d.name for d in departments} == {"d1", "d2"}
+
+
+@pytest.mark.asyncio
+async def test_loader_for_secondary_tables_with_use_list_false(
+    engine, base, sessionmaker, secondary_tables_with_use_list_false
+):
+    Employee, Department = secondary_tables_with_use_list_false
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        e1, _, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
+        session.commit()
+
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+        loader = base_loader.loader_for(Employee.department.property)
+
+        key = tuple(
+            [
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+            ]
+        )
+
+        departments = await loader.load(key)
+        assert {d.name for d in departments} == {"d1"}
+
+
+@pytest.mark.asyncio
+async def test_loader_for_secondary_tables_with_normal_relationship(
+    engine, base, sessionmaker, secondary_tables_with_normal_relationship
+):
+    Employee, Department, Building = secondary_tables_with_normal_relationship
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        e1, e2, _, _, _ = create_default_data_on_secondary_table_tests(
+            session=session, employee=Employee, department=Department
+        )
+
+        b1 = Building(id=2, name="Building 1")
+        b1.employees.append(e1)
+        b1.employees.append(e2)
+        session.add(b1)
+        session.commit()
+
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+        loader = base_loader.loader_for(Employee.department.property)
+
+        key = tuple(
+            [
+                getattr(e1, str(Employee.department.property.local_remote_pairs[0][0].key)),
+            ]
+        )
+
+        departments = await loader.load(key)
+        assert {d.name for d in departments} == {"d1", "d2"}
+
+
+@pytest.mark.asyncio
+async def test_loader_secondary_tables_should_raise_exc_if_relationship_dont_has_local_remote_pairs(
+    engine, base, sessionmaker, secondary_tables_with_normal_relationship
+):
+    Employee, Department, Building = secondary_tables_with_normal_relationship
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+
+        Employee.department.property.local_remote_pairs = []
+        loader = base_loader.loader_for(Employee.department.property)
+
+        with pytest.raises(expected_exception=InvalidLocalRemotePairs):
+            await loader.load((1,))
