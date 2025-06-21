@@ -19,3 +19,4 @@ comment:
 
 ignore:
   - "setup.py"
+  - "noxfile.py"
