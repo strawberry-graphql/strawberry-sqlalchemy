@@ -35,3 +35,12 @@ class InterfaceModelNotPolymorphic(Exception):
             f"Model `{model}` is not polymorphic or is not the base model of its "
             "inheritance chain, and thus cannot be used as an interface."
         )
+
+
+class InvalidLocalRemotePairs(Exception):
+    def __init__(self, relationship_name):
+        super().__init__(
+            f"The `local_remote_pairs` for the relationship `{relationship_name}` is invalid or "
+            "missing. This is likely an issue with the library. "
+            "Please report this error to the maintainers."
+        )
