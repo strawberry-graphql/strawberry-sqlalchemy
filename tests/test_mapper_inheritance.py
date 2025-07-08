@@ -29,7 +29,7 @@ def inheritance_table(base):
     return ModelA, ModelB
 
 
-def test_types_with_inheritance(inheritance_table, mapper):
+def test_types_with_inheritance(inheritance_table, mapper, schema_with_inheritance):
     ModelA, ModelB = inheritance_table
 
     @mapper.type(ModelA)
@@ -48,11 +48,12 @@ def test_types_with_inheritance(inheritance_table, mapper):
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    expected = _get_test_types_with_inheritance_schema()
+    expected = schema_with_inheritance
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
-def _get_test_types_with_inheritance_schema():
+@pytest.fixture
+def schema_with_inheritance():
     return '''
 type ApiB {
   id: String!
@@ -128,7 +129,9 @@ type Query {
     '''
 
 
-def test_types_with_inheritance_should_respect_exclude_fields(inheritance_table, mapper):
+def test_types_with_inheritance_should_respect_exclude_fields(
+    inheritance_table, mapper, schema_with_excluded_fields
+):
     ModelA, ModelB = inheritance_table
 
     @mapper.type(ModelA)
@@ -147,11 +150,12 @@ def test_types_with_inheritance_should_respect_exclude_fields(inheritance_table,
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    expected = _get_test_types_with_inheritance_schema_should_respect_exclude_fields()
+    expected = schema_with_excluded_fields
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
-def _get_test_types_with_inheritance_schema_should_respect_exclude_fields():
+@pytest.fixture
+def schema_with_excluded_fields():
     return '''
 type ApiB {
   id: String!
@@ -245,7 +249,7 @@ def inheritance_table_with_duplicated_fields(base):
 
 
 def test_types_with_inheritance_should_override_inherited_fields_when_duplicated(
-    inheritance_table_with_duplicated_fields, mapper
+    inheritance_table_with_duplicated_fields, mapper, schema_with_duplicated_fields
 ):
     ModelA, ModelB = inheritance_table_with_duplicated_fields
 
@@ -268,11 +272,12 @@ def test_types_with_inheritance_should_override_inherited_fields_when_duplicated
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    expected = _get_test_types_with_inheritance_and_duplicated_fields()
+    expected = schema_with_duplicated_fields
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
-def _get_test_types_with_inheritance_and_duplicated_fields():
+@pytest.fixture
+def schema_with_duplicated_fields():
     return """
 type ApiA {
   id: String!
@@ -294,7 +299,7 @@ type Query {
 
 
 def test_types_with_inheritance_should_override_inherited_fields_when_declared(
-    inheritance_table_with_duplicated_fields, mapper
+    inheritance_table_with_duplicated_fields, mapper, schema_with_declared_fields
 ):
     ModelA, ModelB = inheritance_table_with_duplicated_fields
 
@@ -317,11 +322,12 @@ def test_types_with_inheritance_should_override_inherited_fields_when_declared(
     mapper.finalize()
     schema = strawberry.Schema(query=Query)
 
-    expected = _get_test_types_with_inheritance_and_declared_fields()
+    expected = schema_with_declared_fields
     assert str(schema) == textwrap.dedent(expected).strip()
 
 
-def _get_test_types_with_inheritance_and_declared_fields():
+@pytest.fixture
+def schema_with_declared_fields():
     return """
 type ApiA {
   id: String!
