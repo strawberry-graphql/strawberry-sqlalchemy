@@ -453,14 +453,23 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         connection_type = self._connection_type_for(type_name)
         edge_type = self._edge_type_for(type_name)
 
-        async def wrapper(self, info: Info, first=None, after=None):
+        async def wrapper(self, info: Info, first=None, after=None, last=None, before=None):
             # Pass pagination parameters to the resolver
-            related_objects = await resolver(self, info, first=first, after=after)
+            related_objects = await resolver(
+                self, info, first=first, after=after, last=last, before=before
+            )
 
-            # Determine if there might be more results
+            # Determine if there might be more results in forward or backward direction
             has_more = False
+            has_more_previous = False
+
+            # For forward pagination, we have more if we got exactly the number requested
             if first is not None and len(related_objects) == first:
                 has_more = True
+
+            # For backward pagination, we have more previous if we got exactly the number requested
+            if last is not None and len(related_objects) == last:
+                has_more_previous = True
 
             return StrawberrySQLAlchemyMapper._resolve_connection_edges(
                 related_objects,
@@ -468,7 +477,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 connection_type,
                 first=first,
                 after=after,
+                last=last,
+                before=before,
                 has_more=has_more,
+                has_more_previous=has_more_previous,
             )
 
         setattr(wrapper, _IS_GENERATED_RESOLVER_KEY, True)
@@ -482,7 +494,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         connection_type,
         first=None,
         after=None,
+        last=None,
+        before=None,
         has_more=False,
+        has_more_previous=False,
     ):
         """Resolve connection edges with pagination support.
 
@@ -490,16 +505,20 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             related_objects: The list of objects to include in the connection
             edge_type: The edge type for the connection
             connection_type: The connection type
-            first: Number of items requested (may be None)
-            after: Cursor string for pagination (may be None)
-            has_more: Boolean indicating if there are more results beyond this page
+            first: Number of items requested from start (may be None)
+            after: Cursor string for forward pagination (may be None)
+            last: Number of items requested from end (may be None)
+            before: Cursor string for backward pagination (may be None)
+            has_more: Boolean indicating if there are more results after this page
+            has_more_previous: Boolean indicating if there are more results before this page
         """
-        # Determine if we have previous pages based on whether an 'after' cursor was provided
-        has_previous_page = after is not None
+        # Determine if we have previous pages based on cursor or known state
+        has_previous_page = after is not None or has_more_previous
 
-        # Create edges with cursor values
-        # The cursor value is the array index encoded as a base64 string with 'arrayconnection:' prefix
-        # When this is passed back to the loader, it will be used to determine the offset
+        # For before/last pagination, we know we have next pages if before was provided
+        has_next_page = before is not None or has_more
+
+        # Calculate base offset for cursors
         offset = 0
         if after:
             try:
@@ -510,6 +529,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             except (ValueError, IndexError):
                 pass
 
+        # Create edges with cursor values
+        # The cursor value is the array index encoded as a base64 string with 'arrayconnection:' prefix
+        # When this is passed back to the loader, it will be used to determine the offset
         edges = [
             edge_type.resolve_edge(
                 related_object,
@@ -521,7 +543,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return connection_type(
             edges=edges,
             page_info=relay.PageInfo(
-                has_next_page=has_more,
+                has_next_page=has_next_page,
                 has_previous_page=has_previous_page,
                 start_cursor=edges[0].cursor if edges else None,
                 end_cursor=edges[-1].cursor if edges else None,
@@ -536,7 +558,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         so as to avoid n+1 query problem.
         """
 
-        async def resolve(self, info: Info, first=None, after=None):
+        async def resolve(self, info: Info, first=None, after=None, last=None, before=None):
             instance_state = cast("InstanceState", inspect(self))
             if relationship.key not in instance_state.unloaded:
                 related_objects = getattr(self, relationship.key)
@@ -563,6 +585,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     pagination_args['first'] = first
                 if after is not None:
                     pagination_args['after'] = after
+                if last is not None:
+                    pagination_args['last'] = last
+                if before is not None:
+                    pagination_args['before'] = before
 
                 related_objects = await loader.loader_for(relationship).load(
                     relationship_key, **pagination_args
