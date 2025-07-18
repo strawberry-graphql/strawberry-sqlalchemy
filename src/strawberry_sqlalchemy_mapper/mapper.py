@@ -453,9 +453,22 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         connection_type = self._connection_type_for(type_name)
         edge_type = self._edge_type_for(type_name)
 
-        async def wrapper(self, info: Info):
+        async def wrapper(self, info: Info, first=None, after=None):
+            # Pass pagination parameters to the resolver
+            related_objects = await resolver(self, info, first=first, after=after)
+
+            # Determine if there might be more results
+            has_more = False
+            if first is not None and len(related_objects) == first:
+                has_more = True
+
             return StrawberrySQLAlchemyMapper._resolve_connection_edges(
-                await resolver(self, info), edge_type, connection_type
+                related_objects,
+                edge_type,
+                connection_type,
+                first=first,
+                after=after,
+                has_more=has_more,
             )
 
         setattr(wrapper, _IS_GENERATED_RESOLVER_KEY, True)
@@ -463,20 +476,53 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return wrapper
 
     @staticmethod
-    def _resolve_connection_edges(related_objects, edge_type, connection_type):
-        # TODO: Add pagination support to dataloader resolvers
+    def _resolve_connection_edges(
+        related_objects,
+        edge_type,
+        connection_type,
+        first=None,
+        after=None,
+        has_more=False,
+    ):
+        """Resolve connection edges with pagination support.
+
+        Args:
+            related_objects: The list of objects to include in the connection
+            edge_type: The edge type for the connection
+            connection_type: The connection type
+            first: Number of items requested (may be None)
+            after: Cursor string for pagination (may be None)
+            has_more: Boolean indicating if there are more results beyond this page
+        """
+        # Determine if we have previous pages based on whether an 'after' cursor was provided
+        has_previous_page = after is not None
+
+        # Create edges with cursor values
+        # The cursor value is the array index encoded as a base64 string with 'arrayconnection:' prefix
+        # When this is passed back to the loader, it will be used to determine the offset
+        offset = 0
+        if after:
+            try:
+                from base64 import b64decode
+                cursor_val = b64decode(after).decode('utf-8')
+                if cursor_val.startswith('arrayconnection:'):
+                    offset = int(cursor_val.split(':')[1]) + 1
+            except (ValueError, IndexError):
+                pass
+
         edges = [
             edge_type.resolve_edge(
                 related_object,
-                cursor=i,
+                cursor=relay.to_base64("arrayconnection", offset + i),
             )
             for i, related_object in enumerate(related_objects)
         ]
+
         return connection_type(
             edges=edges,
             page_info=relay.PageInfo(
-                has_next_page=False,
-                has_previous_page=False,
+                has_next_page=has_more,
+                has_previous_page=has_previous_page,
                 start_cursor=edges[0].cursor if edges else None,
                 end_cursor=edges[-1].cursor if edges else None,
             ),
@@ -490,7 +536,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         so as to avoid n+1 query problem.
         """
 
-        async def resolve(self, info: Info):
+        async def resolve(self, info: Info, first=None, after=None):
             instance_state = cast("InstanceState", inspect(self))
             if relationship.key not in instance_state.unloaded:
                 related_objects = getattr(self, relationship.key)
@@ -511,7 +557,16 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     loader = info.context["sqlalchemy_loader"]
                 else:
                     loader = info.context.sqlalchemy_loader
-                related_objects = await loader.loader_for(relationship).load(relationship_key)
+                # Pass pagination parameters to the loader
+                pagination_args = {}
+                if first is not None:
+                    pagination_args['first'] = first
+                if after is not None:
+                    pagination_args['after'] = after
+
+                related_objects = await loader.loader_for(relationship).load(
+                    relationship_key, **pagination_args
+                )
             return related_objects
 
         setattr(resolve, _IS_GENERATED_RESOLVER_KEY, True)
@@ -524,6 +579,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         Return an async field resolver for the given relationship that
         returns a Connection instead of an array of objects.
+
+        This resolver also handles pagination arguments (first, after) that are
+        passed from the GraphQL query to the database query.
         """
         relationship_resolver = self.relationship_resolver_for(relationship)
         if relationship.uselist and not use_list:

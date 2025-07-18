@@ -10,13 +10,16 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    cast,
 )
 
-from sqlalchemy import select, tuple_
+from sqlalchemy import select, tuple_, func
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 from sqlalchemy.orm import RelationshipProperty, Session
+from strawberry import relay
 from strawberry.dataloader import DataLoader
+from base64 import b64decode
 
 
 class StrawberrySQLAlchemyLoader:
@@ -62,7 +65,7 @@ class StrawberrySQLAlchemyLoader:
         except KeyError:
             related_model = relationship.entity.entity
 
-            async def load_fn(keys: List[Tuple]) -> List[Any]:
+            async def load_fn(keys: List[Tuple], **pagination_args) -> List[Any]:
                 query = select(related_model).filter(
                     tuple_(*[remote for _, remote in relationship.local_remote_pairs or []]).in_(
                         keys
@@ -70,6 +73,29 @@ class StrawberrySQLAlchemyLoader:
                 )
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
+
+                # Process pagination parameters
+                first = pagination_args.get('first')
+                after = pagination_args.get('after')
+
+                # Extract offset from cursor if provided
+                offset = 0
+                if after:
+                    try:
+                        # Decode cursor format: base64('arrayconnection:{offset}')
+                        cursor = b64decode(after).decode('utf-8')
+                        if cursor.startswith('arrayconnection:'):
+                            offset = int(cursor.split(':')[1]) + 1  # Start after this position
+                    except (ValueError, IndexError):
+                        # If cursor decoding fails, default to no offset
+                        pass
+
+                # Apply pagination if parameters are provided
+                if offset > 0:
+                    query = query.offset(offset)
+                if first is not None and first >= 0:
+                    query = query.limit(first)
+
                 rows = await self._scalars_all(query)
 
                 def group_by_remote_key(row: Any) -> Tuple:
