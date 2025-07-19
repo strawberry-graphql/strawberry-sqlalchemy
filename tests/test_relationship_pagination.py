@@ -1,4 +1,5 @@
 from typing import Any, List
+import asyncio
 import pytest
 import strawberry
 from sqlalchemy import Column, ForeignKey, Integer, String, select
@@ -97,14 +98,15 @@ def test_relationship_pagination(
         }
         """
 
-        result = schema.execute_sync(
+        # TODO: get execute_sync to work
+        result = asyncio.run(schema.execute(
             query,
             context_value={
                 "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
                     bind=session,
                 ),
             },
-        )
+        ))
         assert result.errors is None
 
         # Check pagination results
@@ -138,11 +140,11 @@ def test_relationship_pagination(
         }
         """
 
-        result = schema.execute_sync(
+        result = asyncio.run(schema.execute(
             query,
             variable_values={"after": end_cursor},
             context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)}
-        )
+        ))
         assert result.errors is None
 
         # Check next page results
@@ -350,14 +352,14 @@ def test_relationship_pagination_last(
         }
         """
 
-        result = schema.execute_sync(
+        result = asyncio.run(schema.execute(
             query,
             context_value={
                 "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
                     bind=session
                 ),
             },
-        )
+        ))
         assert result.errors is None
 
         # Check backward pagination results
@@ -393,11 +395,11 @@ def test_relationship_pagination_last(
         }
         """
 
-        result = schema.execute_sync(
+        result = asyncio.run(schema.execute(
             query,
             variable_values={"before": start_cursor},
             context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)}
-        )
+        ))
         assert result.errors is None
 
         # Check previous page results
