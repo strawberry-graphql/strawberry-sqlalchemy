@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 from typing import (
     Any,
+    Awaitable,
     AsyncContextManager,
     Callable,
     Dict,
@@ -17,20 +18,119 @@ from sqlalchemy import select, tuple_, func
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 from sqlalchemy.orm import RelationshipProperty, Session
-from strawberry import relay
 from strawberry.dataloader import DataLoader
-from base64 import b64decode
+from strawberry_sqlalchemy_mapper.pagination_cursor_utils import (
+    decode_cursor_index,
+)
 
 
-def _decode_cursor_index(cursor: str) -> Optional[int]:
-    try:
-        cursor = b64decode(cursor).decode('utf-8')
-        if cursor.startswith('arrayconnection:'):
-            return int(cursor.split(':')[1])
-    except (ValueError, IndexError):
-        # If decoding fails, default to no offset
-        pass
-    return None
+class PaginatedLoader:
+    """
+    Wrapper around DataLoader that supports pagination arguments
+    """
+    def __init__(
+        self,
+        relationship: RelationshipProperty,
+        load_implementation: Callable,
+        bind: Union[Session, Connection, None] = None,
+        async_bind_factory: Optional[
+            Union[
+                Callable[[], AsyncContextManager[AsyncSession]],
+                Callable[[], AsyncContextManager[AsyncConnection]],
+            ]
+        ] = None,
+    ):
+        self.relationship = relationship
+        self.load_implementation = load_implementation
+        self._loaders: Dict[Tuple, DataLoader] = {}
+        self._bind = bind
+        self._async_bind_factory = async_bind_factory
+
+    async def _scalar_one(self, *args, **kwargs):
+        if self._async_bind_factory:
+            async with self._async_bind_factory() as bind:
+                return (await bind.scalar(*args, **kwargs))
+        else:
+            assert self._bind is not None
+            return self._bind.scalar(*args, **kwargs)
+
+    async def _get_relationship_record_count_for_keys(
+        self,
+        keys: List[Tuple],
+    ) -> int:
+        related_model = self.relationship.entity.entity
+        count_query = select(func.count()).select_from(
+            select(related_model)
+            .filter(
+                tuple_(
+                    *[
+                        remote
+                        for _, remote in self.relationship.local_remote_pairs
+                        or []
+                    ],
+                ).in_(
+                    keys,
+                ),
+            )
+            .subquery(),
+        )
+        sub_result = await self._scalar_one(count_query)
+        return cast(int, sub_result or 0)
+
+    async def get_relationship_record_count_for_key(self, key: Tuple) -> int:
+        return await self._get_relationship_record_count_for_keys([key])
+
+    def loader_for(
+        self,
+        first: Optional[int] = None,
+        after: Optional[str] = None,
+        last: Optional[int] = None,
+        before: Optional[str] = None,
+    ) -> DataLoader:
+        # Create a cache key from the pagination parameters
+        pagination_key = (
+            ('first', first) if first is not None else None,
+            ('after', after) if after is not None else None,
+            ('last', last) if last is not None else None,
+            ('before', before) if before is not None else None,
+        )
+
+        # Filter out None values for the key
+        pagination_key = tuple(item for item in pagination_key if item is not None)
+
+        # Create or retrieve a DataLoader for this specific pagination
+        # configuration
+        if pagination_key not in self._loaders:
+            # Create a loader with a scoped load function that has access to
+            # pagination args
+            async def load_fn(keys: List[Any]) -> List[Any]:
+                return await self.load_implementation(
+                    num_records_fn=self._get_relationship_record_count_for_keys,
+                    keys=keys,
+                    first=first,
+                    after=after,
+                    last=last,
+                    before=before,
+                )
+
+            self._loaders[pagination_key] = DataLoader(load_fn=load_fn)
+        return self._loaders[pagination_key]
+
+    async def load(
+        self,
+        key: Any,
+        first: Optional[int] = None,
+        after: Optional[str] = None,
+        last: Optional[int] = None,
+        before: Optional[str] = None,
+    ) -> Any:
+        # Use the appropriate loader
+        return await self.loader_for(
+            first=first,
+            after=after,
+            last=last,
+            before=before,
+        ).load(key)
 
 
 class StrawberrySQLAlchemyLoader:
@@ -38,7 +138,7 @@ class StrawberrySQLAlchemyLoader:
     Creates DataLoader instances on-the-fly for SQLAlchemy relationships
     """
 
-    _loaders: Dict[RelationshipProperty, DataLoader]
+    _loaders: Dict[RelationshipProperty, PaginatedLoader] = {}
 
     def __init__(
         self,
@@ -67,30 +167,20 @@ class StrawberrySQLAlchemyLoader:
             assert self._bind is not None
             return self._bind.scalars(*args, **kwargs).all()
 
-    def loader_for(self, relationship: RelationshipProperty) -> DataLoader:
-        """
-        Retrieve or create a DataLoader for the given relationship
-        """
+    def loader_for(self, relationship: RelationshipProperty) -> PaginatedLoader:
+        """Retrieve or create a PaginatedLoader for the given relationship."""
         try:
             return self._loaders[relationship]
         except KeyError:
             related_model = relationship.entity.entity
-
             async def load_fn(
+                num_records_fn: Callable[[List[Tuple]], Awaitable[int]],
                 keys: List[Tuple],
                 first: Optional[int] = None,
                 after: Optional[str] = None,
                 last: Optional[int] = None,
                 before: Optional[str] = None,
             ) -> List[Any]:
-                query = select(related_model).filter(
-                    tuple_(*[remote for _, remote in relationship.local_remote_pairs or []]).in_(
-                        keys
-                    )
-                )
-                if relationship.order_by:
-                    query = query.order_by(*relationship.order_by)
-
                 # Validate input combinations according to Relay spec
                 if first is not None and last is not None:
                     raise ValueError("Cannot provide both 'first' and 'last'")
@@ -98,11 +188,25 @@ class StrawberrySQLAlchemyLoader:
                     raise ValueError("Cannot provide both 'first' and 'before'")
                 if last is not None and after is not None:
                     raise ValueError("Cannot provide both 'last' and 'after'")
+                query = select(related_model).filter(
+                    tuple_(
+                        *[
+                            remote
+                            for _, remote in relationship.local_remote_pairs
+                            or []
+                        ],
+                    ).in_(
+                        keys,
+                    ),
+                )
+                if relationship.order_by:
+                    query = query.order_by(*relationship.order_by)
 
                 # Extract offset from cursor if provided
-                offset = 0
+                offset: int = 0
+                limit: int = 0
                 if after:
-                    decoded_after = _decode_cursor_index(after)
+                    decoded_after = decode_cursor_index(after)
                     if decoded_after is not None and decoded_after >= 0:
                         offset = decoded_after + 1
 
@@ -110,57 +214,42 @@ class StrawberrySQLAlchemyLoader:
                 # First, we need to determine the total count and before index
                 before_index: Optional[int] = None
                 if before:
-                    decoded_before = _decode_cursor_index(before)
+                    decoded_before = decode_cursor_index(before)
                     if decoded_before is not None:
                         before_index = decoded_before
 
                 if last is not None:
                     # For just 'last' without 'before', we need the last N items
                     # Get total count first
-                    count_query = select(func.count()).select_from(
-                        select(related_model).filter(
-                            tuple_(*[remote for _, remote in relationship.local_remote_pairs or []]).in_(
-                                keys
-                            )
-                        ).subquery()
-                    )
-                    sub_result = await self._scalars_all(count_query)
-                    total_count = sub_result[0] if sub_result else 0
+                    total_count = await num_records_fn(keys)
 
                     if before_index is not None:
-                        # If before_index is provided, we need to calculate how many items are before that index
+                        # If before_index is provided, we need to calculate how
+                        # many items are before that index
                         items_before_cursor = min(before_index, total_count)
 
                         # Calculate the offset to get last N items before the cursor
                         offset = max(0, items_before_cursor - last)
                         limit = min(last, items_before_cursor)
-
-                        # Apply the calculated offset and limit
-                        if offset > 0:
-                            query = query.offset(offset)
-                        if limit > 0:
-                            query = query.limit(limit)
-
                     else:
-
                         # Calculate offset for last N items
                         offset = max(0, total_count - last)
-                        if offset > 0:
-                            query = query.offset(offset)
-                        if last > 0:
-                            query = query.limit(last)
-
+                        limit = min(last, total_count)
                 elif before_index is not None:
-                    # If just 'before' without 'last', retrieve all items before the cursor
+                    # If just 'before' without 'last', retrieve all items
+                    # before the cursor
                     if before_index > 0:
-                        query = query.limit(before_index)
-
+                        limit = before_index
                 else:
-                    # Standard forward pagination with first/after
-                    if offset > 0:
-                        query = query.offset(offset)
+                    # Standard forward-pagination
                     if first is not None and first >= 0:
-                        query = query.limit(first)
+                        limit = first
+
+                # Apply the calculated offset and limit
+                if offset > 0:
+                    query = query.offset(offset)
+                if limit > 0:
+                    query = query.limit(limit)
 
                 rows = await self._scalars_all(query)
 
@@ -168,9 +257,10 @@ class StrawberrySQLAlchemyLoader:
                     return tuple(
                         [
                             getattr(row, remote.key)
-                            for _, remote in relationship.local_remote_pairs or []
+                            for _, remote in relationship.local_remote_pairs
+                            or []
                             if remote.key
-                        ]
+                        ],
                     )
 
                 grouped_keys: Mapping[Tuple, List[Any]] = defaultdict(list)
@@ -178,8 +268,15 @@ class StrawberrySQLAlchemyLoader:
                     grouped_keys[group_by_remote_key(row)].append(row)
                 if relationship.uselist:
                     return [grouped_keys[key] for key in keys]
-                else:
-                    return [grouped_keys[key][0] if grouped_keys[key] else None for key in keys]
+                return [
+                    grouped_keys[key][0] if grouped_keys[key] else None
+                    for key in keys
+                ]
 
-            self._loaders[relationship] = DataLoader(load_fn=load_fn)
+            self._loaders[relationship] = PaginatedLoader(
+                relationship=relationship,
+                load_implementation=load_fn,
+                bind=self._bind,
+                async_bind_factory=self._async_bind_factory,
+            )
             return self._loaders[relationship]
