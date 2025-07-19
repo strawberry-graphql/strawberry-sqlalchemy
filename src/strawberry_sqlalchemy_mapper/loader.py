@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from typing import (
+    TYPE_CHECKING,
     Any,
-    Awaitable,
     AsyncContextManager,
+    Awaitable,
     Callable,
     Dict,
     List,
@@ -15,20 +17,24 @@ from typing import (
     cast,
 )
 
-from sqlalchemy import select, tuple_, func
-from sqlalchemy.engine.base import Connection
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
-from sqlalchemy.orm import RelationshipProperty, Session
+from sqlalchemy import func, select, tuple_
 from strawberry.dataloader import DataLoader
+
 from strawberry_sqlalchemy_mapper.pagination_cursor_utils import (
     decode_cursor_index,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine.base import Connection
+    from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
+    from sqlalchemy.orm import RelationshipProperty, Session
 
 
 class PaginatedLoader:
     """
     Wrapper around DataLoader that supports pagination arguments
     """
+
     def __init__(
         self,
         parent_loader: StrawberrySQLAlchemyLoader,
@@ -42,18 +48,14 @@ class PaginatedLoader:
 
     async def _get_relationship_record_count_for_keys(
         self,
-        keys: List[Tuple],
+        keys: List[Tuple[object, ...]],
     ) -> int:
         related_model = self.relationship.entity.entity
         count_query = select(func.count()).select_from(
             select(related_model)
             .filter(
                 tuple_(
-                    *[
-                        remote
-                        for _, remote in self.relationship.local_remote_pairs
-                        or []
-                    ],
+                    *[remote for _, remote in self.relationship.local_remote_pairs or []],
                 ).in_(
                     keys,
                 ),
@@ -63,7 +65,10 @@ class PaginatedLoader:
         sub_result = await self.parent_loader._scalar_one(count_query)
         return cast(int, sub_result or 0)
 
-    async def get_relationship_record_count_for_key(self, key: Tuple) -> int:
+    async def get_relationship_record_count_for_key(
+        self,
+        key: Tuple[object, ...],
+    ) -> int:
         return await self._get_relationship_record_count_for_keys([key])
 
     def loader_for(
@@ -75,10 +80,10 @@ class PaginatedLoader:
     ) -> DataLoader:
         # Create a cache key from the pagination parameters
         pagination_key = (
-            ('first', first) if first is not None else None,
-            ('after', after) if after is not None else None,
-            ('last', last) if last is not None else None,
-            ('before', before) if before is not None else None,
+            ("first", first) if first is not None else None,
+            ("after", after) if after is not None else None,
+            ("last", last) if last is not None else None,
+            ("before", before) if before is not None else None,
         )
 
         # Filter out None values for the key
@@ -156,7 +161,7 @@ class StrawberrySQLAlchemyLoader:
     async def _scalar_one(self, *args, **kwargs):
         if self._async_bind_factory:
             async with self._async_bind_factory() as bind:
-                return (await bind.scalar(*args, **kwargs))
+                return await bind.scalar(*args, **kwargs)
         else:
             assert self._bind is not None
             return self._bind.scalar(*args, **kwargs)
@@ -167,6 +172,7 @@ class StrawberrySQLAlchemyLoader:
             return self._loaders[relationship]
         except KeyError:
             related_model = relationship.entity.entity
+
             async def load_fn(
                 num_records_fn: Callable[[List[Tuple]], Awaitable[int]],
                 keys: List[Tuple],
@@ -184,11 +190,7 @@ class StrawberrySQLAlchemyLoader:
                     raise ValueError("Cannot provide both 'last' and 'after'")
                 query = select(related_model).filter(
                     tuple_(
-                        *[
-                            remote
-                            for _, remote in relationship.local_remote_pairs
-                            or []
-                        ],
+                        *[remote for _, remote in relationship.local_remote_pairs or []],
                     ).in_(
                         keys,
                     ),
@@ -251,8 +253,7 @@ class StrawberrySQLAlchemyLoader:
                     return tuple(
                         [
                             getattr(row, remote.key)
-                            for _, remote in relationship.local_remote_pairs
-                            or []
+                            for _, remote in relationship.local_remote_pairs or []
                             if remote.key
                         ],
                     )
@@ -262,10 +263,7 @@ class StrawberrySQLAlchemyLoader:
                     grouped_keys[group_by_remote_key(row)].append(row)
                 if relationship.uselist:
                     return [grouped_keys[key] for key in keys]
-                return [
-                    grouped_keys[key][0] if grouped_keys[key] else None
-                    for key in keys
-                ]
+                return [grouped_keys[key][0] if grouped_keys[key] else None for key in keys]
 
             self._loaders[relationship] = PaginatedLoader(
                 parent_loader=self,

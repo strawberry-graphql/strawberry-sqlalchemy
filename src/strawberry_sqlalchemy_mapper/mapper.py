@@ -8,7 +8,6 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 from itertools import chain
-from functools import partial
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -89,14 +88,12 @@ from strawberry_sqlalchemy_mapper.exc import (
     UnsupportedDescriptorType,
 )
 from strawberry_sqlalchemy_mapper.field import field
+from strawberry_sqlalchemy_mapper.pagination_cursor_utils import decode_cursor_index
 from strawberry_sqlalchemy_mapper.relay import (
     resolve_model_id,
     resolve_model_id_attr,
     resolve_model_node,
     resolve_model_nodes,
-)
-from strawberry_sqlalchemy_mapper.pagination_cursor_utils import (
-    decode_cursor_index
 )
 from strawberry_sqlalchemy_mapper.scalars import BigInt
 
@@ -131,6 +128,7 @@ class StrawberrySQLAlchemyLazy(LazyType):
         assert self.mapper is not None
         return self.mapper.mapped_types[self.type_name]
 
+
 def _get_relationship_key(model: object, relationship: RelationshipProperty) -> Tuple[str, ...]:
     """Return relationship key for data loader."""
     return tuple(
@@ -140,6 +138,7 @@ def _get_relationship_key(model: object, relationship: RelationshipProperty) -> 
             if local.key
         ],
     )
+
 
 class WithStrawberrySQLAlchemyObjectDefinition(
     WithStrawberryObjectDefinition,
@@ -502,9 +501,9 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     loader = info.context["sqlalchemy_loader"]
                 else:
                     loader = info.context.sqlalchemy_loader
-                total_count = await loader.loader_for(relationship).get_relationship_record_count_for_key(
-                    _get_relationship_key(self, relationship)
-                )
+                total_count = await loader.loader_for(
+                    relationship
+                ).get_relationship_record_count_for_key(_get_relationship_key(self, relationship))
 
             return StrawberrySQLAlchemyMapper._resolve_connection_edges(
                 related_objects,
@@ -602,7 +601,6 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             ),
         )
 
-
     def relationship_resolver_for(
         self,
         relationship: RelationshipProperty,
@@ -612,6 +610,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
 
         if relationship.uselist:
+
             async def resolve(
                 self,
                 info: Info,
@@ -649,6 +648,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             return resolve
 
         else:
+
             async def resolve(self, info: Info):
                 instance_state = cast("InstanceState", inspect(self))
                 if relationship.key not in instance_state.unloaded:
@@ -685,7 +685,6 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         relationship_resolver = self.relationship_resolver_for(relationship)
         if relationship.uselist and not use_list:
-
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
                 relationship,
@@ -700,7 +699,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return getattr(type_, _IS_GENERATED_CONNECTION_TYPE_KEY, False)
 
     def association_proxy_resolver_for(
-        self, mapper: Mapper, descriptor: Any, strawberry_type: Type,
+        self,
+        mapper: Mapper,
+        descriptor: Any,
+        strawberry_type: Type,
     ) -> Callable[..., Awaitable[Any]]:
         """
         Return an async field resolver for the given association proxy.
@@ -739,7 +741,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 assert end_relationship_resolver is not None
                 if isinstance(in_between_objects, collections.abc.Iterable):
                     outputs = await asyncio.gather(
-                        *[end_relationship_resolver(obj, info) for obj in in_between_objects])
+                        *[end_relationship_resolver(obj, info) for obj in in_between_objects]
+                    )
                     if outputs and isinstance(outputs[0], list):
                         outputs = list(chain.from_iterable(outputs))
                     else:
