@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 from collections import defaultdict
 from typing import (
@@ -30,29 +31,14 @@ class PaginatedLoader:
     """
     def __init__(
         self,
+        parent_loader: StrawberrySQLAlchemyLoader,
         relationship: RelationshipProperty,
         load_implementation: Callable,
-        bind: Union[Session, Connection, None] = None,
-        async_bind_factory: Optional[
-            Union[
-                Callable[[], AsyncContextManager[AsyncSession]],
-                Callable[[], AsyncContextManager[AsyncConnection]],
-            ]
-        ] = None,
     ):
-        self.relationship = relationship
-        self.load_implementation = load_implementation
+        self.parent_loader: StrawberrySQLAlchemyLoader = parent_loader
+        self.relationship: RelationshipProperty = relationship
+        self.load_implementation: Callable = load_implementation
         self._loaders: Dict[Tuple, DataLoader] = {}
-        self._bind = bind
-        self._async_bind_factory = async_bind_factory
-
-    async def _scalar_one(self, *args, **kwargs):
-        if self._async_bind_factory:
-            async with self._async_bind_factory() as bind:
-                return (await bind.scalar(*args, **kwargs))
-        else:
-            assert self._bind is not None
-            return self._bind.scalar(*args, **kwargs)
 
     async def _get_relationship_record_count_for_keys(
         self,
@@ -74,7 +60,7 @@ class PaginatedLoader:
             )
             .subquery(),
         )
-        sub_result = await self._scalar_one(count_query)
+        sub_result = await self.parent_loader._scalar_one(count_query)
         return cast(int, sub_result or 0)
 
     async def get_relationship_record_count_for_key(self, key: Tuple) -> int:
@@ -166,6 +152,14 @@ class StrawberrySQLAlchemyLoader:
         else:
             assert self._bind is not None
             return self._bind.scalars(*args, **kwargs).all()
+
+    async def _scalar_one(self, *args, **kwargs):
+        if self._async_bind_factory:
+            async with self._async_bind_factory() as bind:
+                return (await bind.scalar(*args, **kwargs))
+        else:
+            assert self._bind is not None
+            return self._bind.scalar(*args, **kwargs)
 
     def loader_for(self, relationship: RelationshipProperty) -> PaginatedLoader:
         """Retrieve or create a PaginatedLoader for the given relationship."""
@@ -274,9 +268,8 @@ class StrawberrySQLAlchemyLoader:
                 ]
 
             self._loaders[relationship] = PaginatedLoader(
+                parent_loader=self,
                 relationship=relationship,
                 load_implementation=load_fn,
-                bind=self._bind,
-                async_bind_factory=self._async_bind_factory,
             )
             return self._loaders[relationship]
