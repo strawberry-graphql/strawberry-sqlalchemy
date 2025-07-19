@@ -84,7 +84,8 @@ async def test_loader_for(engine, base, sessionmaker, many_to_one_tables):
         e2.department = d1
         session.commit()
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
-        loader = base_loader.loader_for(Employee.department.property)
+        paginated_loader = base_loader.loader_for(Employee.department.property)
+        loader = paginated_loader.loader_for()
         assert loader.max_batch_size is None
         assert loader.cache is True
         assert not loader.cache_map.cache_map
@@ -97,7 +98,8 @@ async def test_loader_for(engine, base, sessionmaker, many_to_one_tables):
         department = await loader.load(key)
         assert department.name == "d2"
 
-        loader = base_loader.loader_for(Department.employees.property)
+        paginated_loader = base_loader.loader_for(Department.employees.property)
+        loader = paginated_loader.loader_for()
 
         employees = await loader.load((d2.id,))
         assert {e.name for e in employees} == {"e1"}
@@ -130,12 +132,12 @@ async def test_loader_with_async_session(
             getattr(e1, local.key) for local, _ in Employee.department.property.local_remote_pairs
         )
     base_loader = StrawberrySQLAlchemyLoader(async_bind_factory=async_sessionmaker)
-    loader = base_loader.loader_for(Employee.department.property)
+    loader = base_loader.loader_for(Employee.department.property).loader_for()
 
     department = await loader.load(department_loader_key)
     assert department.name == "d2"
 
-    loader = base_loader.loader_for(Department.employees.property)
+    loader = base_loader.loader_for(Department.employees.property).loader_for()
     employees = await loader.load((d2_id,))
     assert {e.name for e in employees} == {"e1"}
 
@@ -163,7 +165,7 @@ async def test_loader_for_secondary(engine, base, sessionmaker, secondary_tables
         session.commit()
 
         base_loader = StrawberrySQLAlchemyLoader(bind=session)
-        loader = base_loader.loader_for(Employee.departments.property)
+        loader = base_loader.loader_for(Employee.departments.property).loader_for()
 
         key = tuple(
             [

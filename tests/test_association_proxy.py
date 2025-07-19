@@ -420,7 +420,7 @@ def get_schema_should_not_raise_UnsupportedAssociation_if_excluded_expected_shem
     type Department {
       id: Int!
       name: String!
-      employees: EmployeeConnection!
+      employees(first: Int = null, after: String = null, last: Int = null, before: String = null): EmployeeConnection!
     }
 
     type Employee {
@@ -470,7 +470,7 @@ def get_test_relationships_schema_with_association_proxy_expected_schema():
 type Building {
   id: Int!
   name: String!
-  departments: DepartmentConnection!
+  departments(first: Int = null, after: String = null, last: Int = null, before: String = null): DepartmentConnection!
   employees: EmployeeConnection!
 }
 
@@ -479,7 +479,7 @@ type Department {
   name: String!
   buildingId: Int
   building: Building
-  employees: EmployeeConnection!
+  employees(first: Int = null, after: String = null, last: Int = null, before: String = null): EmployeeConnection!
 }
 
 type DepartmentConnection {

@@ -61,8 +61,8 @@ type ApiB {
   relationshipB: ModelB
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelA {
@@ -89,8 +89,8 @@ type ModelB {
   id: String!
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelBConnection {
@@ -162,8 +162,8 @@ type ApiB {
   relationshipB: ModelB
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelA {
@@ -190,8 +190,8 @@ type ModelB {
   id: String!
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelBConnection {

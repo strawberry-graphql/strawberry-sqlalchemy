@@ -319,7 +319,7 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     type Department {
       id: Int!
       name: String!
-      employees: EmployeeConnection!
+      employees(first: Int = null, after: String = null, last: Int = null, before: String = null): EmployeeConnection!
     }
 
     type Employee {

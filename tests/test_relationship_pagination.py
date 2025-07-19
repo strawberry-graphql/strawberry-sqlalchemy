@@ -1,7 +1,7 @@
 from typing import Any, List
 import pytest
 import strawberry
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.orm import relationship, sessionmaker
@@ -29,42 +29,46 @@ def author_book_tables(base: Any):
 
 
 def test_relationship_pagination(
-    base: Any, engine: Engine, sessionmaker: sessionmaker, author_book_tables
+    base: Any,
+    engine: Engine,
+    mapper: StrawberrySQLAlchemyMapper,
+    sessionmaker: sessionmaker,
+    author_book_tables,
 ):
     """Test pagination on relationship fields using first and after parameters."""
     base.metadata.create_all(engine)
-    Author, Book = author_book_tables
-
-    mapper = StrawberrySQLAlchemyMapper()
-
-    @mapper.type(Author)
-    class AuthorType(relay.Node):
-        id: relay.NodeID[int]
-        name: str
-
-    @mapper.type(Book)
-    class BookType(relay.Node):
-        id: relay.NodeID[int]
-        title: str
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        def author(self, info: Info, id: int) -> AuthorType:
-            with sessionmaker() as session:
-                return session.query(Author).filter(Author.id == id).first()
-
-    schema = strawberry.Schema(query=Query)
+    AuthorModel, BookModel = author_book_tables
 
     with sessionmaker() as session:
+
+        @mapper.type(AuthorModel)
+        class Author:
+            pass
+
+        @mapper.type(BookModel)
+        class Book:
+            pass
+
+        @strawberry.type
+        class Query:
+
+            @strawberry.field
+            def author(self, info: Info, id: int) -> Author:
+                return session.scalars(
+                    select(AuthorModel).filter(AuthorModel.id == id)
+                ).first()
+
+        mapper.finalize()
+        schema = strawberry.Schema(query=Query)
+
         # Create test data
-        author = Author(name="Test Author")
+        author = AuthorModel(name="Test Author")
         session.add(author)
         session.flush()  # To get the author ID
 
         # Create 10 books for pagination testing
         for i in range(10):
-            book = Book(title=f"Book {i+1}", author_id=author.id)
+            book = BookModel(title=f"Book {i+1}", author_id=author.id)
             session.add(book)
 
         session.commit()
@@ -150,49 +154,51 @@ def test_relationship_pagination(
 
 @pytest.mark.asyncio
 async def test_relationship_pagination_async(
-    base: Any, async_engine: AsyncEngine, async_sessionmaker, author_book_tables
+    base: Any,
+    async_engine: AsyncEngine,
+    mapper: StrawberrySQLAlchemyMapper,
+    async_sessionmaker,
+    author_book_tables
 ):
     """Test pagination on relationship fields using async execution."""
     async with async_engine.begin() as conn:
         await conn.run_sync(base.metadata.create_all)
 
-    Author, Book = author_book_tables
-    mapper = StrawberrySQLAlchemyMapper()
-
-    @mapper.type(Author)
-    class AuthorType(relay.Node):
-        id: relay.NodeID[int]
-        name: str
-
-    @mapper.type(Book)
-    class BookType(relay.Node):
-        id: relay.NodeID[int]
-        title: str
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        def author(self, info: Info, id: int) -> AuthorType:
-            session = info.context["session"]
-            return session.get(Author, id)
-
-    schema = strawberry.Schema(query=Query)
-
     async with async_sessionmaker(expire_on_commit=False) as session:
+
+        AuthorModel, BookModel = author_book_tables
+
+        @mapper.type(AuthorModel)
+        class Author:
+            pass
+
+        @mapper.type(BookModel)
+        class Book:
+            pass
+
+        @strawberry.type
+        class Query:
+            @strawberry.field
+            def author(self, info: Info, id: int) -> Author:
+                session = info.context["session"]
+                return session.get(AuthorModel, id)
+
+        mapper.finalize()
+        schema = strawberry.Schema(query=Query)
+
         # Create test data
-        author = Author(name="Test Author")
+        author = AuthorModel(name="Test Author")
         session.add(author)
         await session.flush()  # To get the author ID
 
         # Create 10 books for pagination testing
         for i in range(10):
-            book = Book(title=f"Book {i+1}", author_id=author.id)
+            book = BookModel(title=f"Book {i+1}", author_id=author.id)
             session.add(book)
 
         await session.commit()
         author_id = author.id
 
-    async with async_sessionmaker(expire_on_commit=False) as session:
         # Query for first 3 books
         query = """
         query {
@@ -276,42 +282,46 @@ async def test_relationship_pagination_async(
 
 
 def test_relationship_pagination_last(
-    base: Any, engine: Engine, sessionmaker: sessionmaker, author_book_tables
+    base: Any,
+    engine: Engine,
+    mapper: StrawberrySQLAlchemyMapper,
+    sessionmaker: sessionmaker,
+    author_book_tables,
 ):
     """Test pagination on relationship fields using last and before parameters."""
     base.metadata.create_all(engine)
-    Author, Book = author_book_tables
-
-    mapper = StrawberrySQLAlchemyMapper()
-
-    @mapper.type(Author)
-    class AuthorType(relay.Node):
-        id: relay.NodeID[int]
-        name: str
-
-    @mapper.type(Book)
-    class BookType(relay.Node):
-        id: relay.NodeID[int]
-        title: str
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        def author(self, info: Info, id: int) -> AuthorType:
-            with sessionmaker() as session:
-                return session.query(Author).filter(Author.id == id).first()
-
-    schema = strawberry.Schema(query=Query)
+    AuthorModel, BookModel = author_book_tables
 
     with sessionmaker() as session:
+
+        @mapper.type(AuthorModel)
+        class Author:
+            pass
+
+        @mapper.type(BookModel)
+        class Book:
+            pass
+
+        @strawberry.type
+        class Query:
+
+            @strawberry.field
+            def author(self, info: Info, id: int) -> Author:
+                return session.scalars(
+                    select(AuthorModel).filter(AuthorModel.id == id)
+                ).first()
+
+        mapper.finalize()
+        schema = strawberry.Schema(query=Query)
+
         # Create test data
-        author = Author(name="Test Author")
+        author = AuthorModel(name="Test Author")
         session.add(author)
         session.flush()  # To get the author ID
 
         # Create 10 books for pagination testing
         for i in range(10):
-            book = Book(title=f"Book {i+1}", author_id=author.id)
+            book = BookModel(title=f"Book {i+1}", author_id=author.id)
             session.add(book)
 
         session.commit()
@@ -400,49 +410,51 @@ def test_relationship_pagination_last(
 
 @pytest.mark.asyncio
 async def test_relationship_pagination_last_async(
-    base: Any, async_engine: AsyncEngine, async_sessionmaker, author_book_tables
+    base: Any,
+    async_engine: AsyncEngine,
+    mapper: StrawberrySQLAlchemyMapper,
+    async_sessionmaker,
+    author_book_tables,
 ):
     """Test backward pagination on relationship fields using async execution."""
     async with async_engine.begin() as conn:
         await conn.run_sync(base.metadata.create_all)
 
-    Author, Book = author_book_tables
-    mapper = StrawberrySQLAlchemyMapper()
-
-    @mapper.type(Author)
-    class AuthorType(relay.Node):
-        id: relay.NodeID[int]
-        name: str
-
-    @mapper.type(Book)
-    class BookType(relay.Node):
-        id: relay.NodeID[int]
-        title: str
-
-    @strawberry.type
-    class Query:
-        @strawberry.field
-        def author(self, info: Info, id: int) -> AuthorType:
-            session = info.context["session"]
-            return session.get(Author, id)
-
-    schema = strawberry.Schema(query=Query)
+    AuthorModel, BookModel = author_book_tables
 
     async with async_sessionmaker(expire_on_commit=False) as session:
+
+        @mapper.type(AuthorModel)
+        class Author:
+            pass
+
+        @mapper.type(BookModel)
+        class Book:
+            pass
+
+        @strawberry.type
+        class Query:
+            @strawberry.field
+            def author(self, info: Info, id: int) -> Author:
+                session = info.context["session"]
+                return session.get(AuthorModel, id)
+
+        mapper.finalize()
+        schema = strawberry.Schema(query=Query)
+
         # Create test data
-        author = Author(name="Test Author")
+        author = AuthorModel(name="Test Author")
         session.add(author)
         await session.flush()  # To get the author ID
 
         # Create 10 books for pagination testing
         for i in range(10):
-            book = Book(title=f"Book {i+1}", author_id=author.id)
+            book = BookModel(title=f"Book {i+1}", author_id=author.id)
             session.add(book)
 
         await session.commit()
         author_id = author.id
 
-    async with async_sessionmaker(expire_on_commit=False) as session:
         # Query for last 3 books (backward pagination)
         query = """
         query {
@@ -455,6 +467,7 @@ async def test_relationship_pagination_last_async(
                   id
                   title
                 }
+                cursor
               }
               pageInfo {
                 hasNextPage
@@ -479,6 +492,8 @@ async def test_relationship_pagination_last_async(
 
         # Check backward pagination results
         books_connection = result.data["author"]["books"]
+        from pprint import pprint
+        pprint(books_connection)
         assert len(books_connection["edges"]) == 3
         # When getting the last N items, there should be no next page
         assert books_connection["pageInfo"]["hasNextPage"] is False
