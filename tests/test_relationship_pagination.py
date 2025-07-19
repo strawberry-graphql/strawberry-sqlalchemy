@@ -1,12 +1,12 @@
-from typing import Any, List
 import asyncio
+from typing import Any
+
 import pytest
 import strawberry
 from sqlalchemy import Column, ForeignKey, Integer, String, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.orm import relationship, sessionmaker
-from strawberry import relay
 from strawberry.types import Info
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader, StrawberrySQLAlchemyMapper
 
@@ -52,12 +52,9 @@ def test_relationship_pagination(
 
         @strawberry.type
         class Query:
-
             @strawberry.field
             def author(self, info: Info, id: int) -> Author:
-                return session.scalars(
-                    select(AuthorModel).filter(AuthorModel.id == id)
-                ).first()
+                return session.scalars(select(AuthorModel).filter(AuthorModel.id == id)).first()
 
         mapper.finalize()
         schema = strawberry.Schema(query=Query)
@@ -99,14 +96,16 @@ def test_relationship_pagination(
         """
 
         # TODO: get execute_sync to work
-        result = asyncio.run(schema.execute(
-            query,
-            context_value={
-                "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
-                    bind=session,
-                ),
-            },
-        ))
+        result = asyncio.run(
+            schema.execute(
+                query,
+                context_value={
+                    "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                        bind=session,
+                    ),
+                },
+            )
+        )
         assert result.errors is None
 
         # Check pagination results
@@ -140,11 +139,13 @@ def test_relationship_pagination(
         }
         """
 
-        result = asyncio.run(schema.execute(
-            query,
-            variable_values={"after": end_cursor},
-            context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)}
-        ))
+        result = asyncio.run(
+            schema.execute(
+                query,
+                variable_values={"after": end_cursor},
+                context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
+            )
+        )
         assert result.errors is None
 
         # Check next page results
@@ -160,14 +161,13 @@ async def test_relationship_pagination_async(
     async_engine: AsyncEngine,
     mapper: StrawberrySQLAlchemyMapper,
     async_sessionmaker,
-    author_book_tables
+    author_book_tables,
 ):
     """Test pagination on relationship fields using async execution."""
     async with async_engine.begin() as conn:
         await conn.run_sync(base.metadata.create_all)
 
     async with async_sessionmaker(expire_on_commit=False) as session:
-
         AuthorModel, BookModel = author_book_tables
 
         @mapper.type(AuthorModel)
@@ -227,11 +227,7 @@ async def test_relationship_pagination_async(
 
         loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: session)
         result = await schema.execute(
-            query,
-            context_value={
-                "sqlalchemy_loader": loader,
-                "session": session
-            }
+            query, context_value={"sqlalchemy_loader": loader, "session": session}
         )
         assert result.errors is None
 
@@ -269,10 +265,7 @@ async def test_relationship_pagination_async(
         result = await schema.execute(
             query,
             variable_values={"after": end_cursor},
-            context_value={
-                "sqlalchemy_loader": loader,
-                "session": session
-            }
+            context_value={"sqlalchemy_loader": loader, "session": session},
         )
         assert result.errors is None
 
@@ -306,12 +299,9 @@ def test_relationship_pagination_last(
 
         @strawberry.type
         class Query:
-
             @strawberry.field
             def author(self, info: Info, id: int) -> Author:
-                return session.scalars(
-                    select(AuthorModel).filter(AuthorModel.id == id)
-                ).first()
+                return session.scalars(select(AuthorModel).filter(AuthorModel.id == id)).first()
 
         mapper.finalize()
         schema = strawberry.Schema(query=Query)
@@ -352,14 +342,14 @@ def test_relationship_pagination_last(
         }
         """
 
-        result = asyncio.run(schema.execute(
-            query,
-            context_value={
-                "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
-                    bind=session
-                ),
-            },
-        ))
+        result = asyncio.run(
+            schema.execute(
+                query,
+                context_value={
+                    "sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session),
+                },
+            )
+        )
         assert result.errors is None
 
         # Check backward pagination results
@@ -395,11 +385,13 @@ def test_relationship_pagination_last(
         }
         """
 
-        result = asyncio.run(schema.execute(
-            query,
-            variable_values={"before": start_cursor},
-            context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)}
-        ))
+        result = asyncio.run(
+            schema.execute(
+                query,
+                variable_values={"before": start_cursor},
+                context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
+            )
+        )
         assert result.errors is None
 
         # Check previous page results
@@ -484,18 +476,12 @@ async def test_relationship_pagination_last_async(
 
         loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: session)
         result = await schema.execute(
-            query,
-            context_value={
-                "sqlalchemy_loader": loader,
-                "session": session
-            }
+            query, context_value={"sqlalchemy_loader": loader, "session": session}
         )
         assert result.errors is None
 
         # Check backward pagination results
         books_connection = result.data["author"]["books"]
-        from pprint import pprint
-        pprint(books_connection)
         assert len(books_connection["edges"]) == 3
         # When getting the last N items, there should be no next page
         assert books_connection["pageInfo"]["hasNextPage"] is False
@@ -530,10 +516,7 @@ async def test_relationship_pagination_last_async(
         result = await schema.execute(
             query,
             variable_values={"before": start_cursor},
-            context_value={
-                "sqlalchemy_loader": loader,
-                "session": session
-            }
+            context_value={"sqlalchemy_loader": loader, "session": session},
         )
         assert result.errors is None
 
