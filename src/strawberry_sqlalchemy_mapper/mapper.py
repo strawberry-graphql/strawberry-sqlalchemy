@@ -542,6 +542,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             edge_type: The edge type for the connection
             connection_type: The connection type
             first: Number of items requested from start (may be None)
+                - curr
             after: Cursor string for forward pagination (may be None)
             last: Number of items requested from end (may be None)
             before: Cursor string for backward pagination (may be None)
@@ -559,37 +560,27 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             raise ValueError("total_count must be set for last/before.")
 
         edges: List[Any] = []
-        if before is not None:
-            decoded_before_index = decode_cursor_index(before)
-            for i, related_object in enumerate(related_objects):
-                edges.append(
-                    edge_type.resolve_edge(
-                        related_object,
-                        cursor=max(0, decoded_before_index - total_count + i),
-                    )
-                )
+        decoded_before_index = None if before is None else decode_cursor_index(before)
+        decoded_after_index = None if after is None else decode_cursor_index(after)
+        start_index = 0
+        if decoded_before_index is not None:
+            if last is not None:
+                start_index = max(0, decoded_before_index - last)
+            # otherwise, keep start index at 0
         elif last is not None:
-            for i, related_object in enumerate(related_objects):
-                edges.append(
-                    edge_type.resolve_edge(
-                        related_object,
-                        cursor=max(0, total_count - last),
-                    )
-                )
+            # Before is either invalid or not set; we're taking the last
+            # elements from the end
+            start_index = max(0, total_count - last)
         else:
             # Forward pagination is nicer
-            offset = 0
-            if after is not None:
-                decoded_after_index = decode_cursor_index(after)
-                if decoded_after_index is not None:
-                    offset = decoded_after_index + 1
-            for i, related_object in enumerate(related_objects):
-                edges.append(
-                    edge_type.resolve_edge(
-                        related_object,
-                        cursor=offset + i,
-                    )
-                )
+            start_index = decoded_after_index or 0
+        edges = [
+            edge_type.resolve_edge(
+                related_object,
+                cursor=start_index + i,
+            )
+            for i, related_object in enumerate(related_objects)
+        ]
 
         return connection_type(
             edges=edges,
