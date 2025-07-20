@@ -5,13 +5,15 @@ import pytest
 import strawberry
 from sqlalchemy import Column, ForeignKey, Integer, String, select
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import Session, relationship, sessionmaker
 from strawberry.types import Info
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader, StrawberrySQLAlchemyMapper
 
 
-@pytest.fixture
+# Autouse this fixture within this module so that metadata is injected in base
+@pytest.fixture(autouse=True)
 def author_book_tables(base: Any):
     class Author(base):
         __tablename__ = "author"
@@ -29,500 +31,467 @@ def author_book_tables(base: Any):
     return Author, Book
 
 
-def test_relationship_pagination(
+@pytest.fixture
+def sync_session(sessionmaker: sessionmaker) -> Session:
+    with sessionmaker() as session:
+        yield session
+
+
+@pytest.fixture
+async def async_session(async_sessionmaker):
+    async with async_sessionmaker(expire_on_commit=False) as session:
+        yield session
+
+
+@pytest.fixture
+def sync_author(
     base: Any,
     engine: Engine,
-    mapper: StrawberrySQLAlchemyMapper,
-    sessionmaker: sessionmaker,
+    sync_session: Session,
     author_book_tables,
 ):
-    """Test pagination on relationship fields using first and after parameters."""
+    AuthorModel, BookModel = author_book_tables
     base.metadata.create_all(engine)
+    # Create test data
+    author = AuthorModel(name="Test Author")
+    sync_session.add(author)
+    sync_session.flush()  # To get the author ID
+
+    # Create 10 books for pagination testing
+    for i in range(10):
+        book = BookModel(title=f"Book {i+1}", author_id=author.id)
+        sync_session.add(book)
+
+    sync_session.commit()
+    return author
+
+
+@pytest.fixture
+async def async_author(
+    base: Any,
+    async_engine: AsyncEngine,
+    async_session: AsyncSession,
+    author_book_tables,
+):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(base.metadata.create_all)
+    # Create test data
+    AuthorModel, BookModel = author_book_tables
+    author = AuthorModel(name="Test Author")
+    async_session.add(author)
+    await async_session.flush()  # To get the author ID
+
+    # Create 10 books for pagination testing
+    for i in range(10):
+        book = BookModel(title=f"Book {i+1}", author_id=author.id)
+        async_session.add(book)
+
+    await async_session.commit()
+    return author
+
+
+@pytest.fixture
+def sync_session_schema(mapper: StrawberrySQLAlchemyMapper, sync_session, author_book_tables):
     AuthorModel, BookModel = author_book_tables
 
-    with sessionmaker() as session:
+    @mapper.type(AuthorModel)
+    class Author:
+        pass
 
-        @mapper.type(AuthorModel)
-        class Author:
-            pass
+    @mapper.type(BookModel)
+    class Book:
+        pass
 
-        @mapper.type(BookModel)
-        class Book:
-            pass
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def author(self, info: Info, id: int) -> Author:
+            return sync_session.scalars(select(AuthorModel).filter(AuthorModel.id == id)).first()
 
-        @strawberry.type
-        class Query:
-            @strawberry.field
-            def author(self, info: Info, id: int) -> Author:
-                return session.scalars(select(AuthorModel).filter(AuthorModel.id == id)).first()
+    mapper.finalize()
+    return strawberry.Schema(query=Query)
 
-        mapper.finalize()
-        schema = strawberry.Schema(query=Query)
 
-        # Create test data
-        author = AuthorModel(name="Test Author")
-        session.add(author)
-        session.flush()  # To get the author ID
+@pytest.fixture
+def async_session_schema(
+    mapper: StrawberrySQLAlchemyMapper, async_session: AsyncSession, author_book_tables
+):
+    AuthorModel, BookModel = author_book_tables
 
-        # Create 10 books for pagination testing
-        for i in range(10):
-            book = BookModel(title=f"Book {i+1}", author_id=author.id)
-            session.add(book)
+    @mapper.type(AuthorModel)
+    class Author:
+        pass
 
-        session.commit()
+    @mapper.type(BookModel)
+    class Book:
+        pass
 
-        # Query for first 3 books
-        query = """
-        query {
-          author(id: 1) {
-            id
-            name
-            books(first: 3) {
-              edges {
-                node {
-                  id
-                  title
-                }
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        async def author(self, info: Info, id: int) -> Author:
+            return (
+                await async_session.scalars(select(AuthorModel).filter(AuthorModel.id == id))
+            ).first()
+
+    mapper.finalize()
+    return strawberry.Schema(query=Query)
+
+
+def test_relationship_pagination(
+    sync_session: Session,
+    sync_session_schema: strawberry.Schema,
+    sync_author,
+):
+    """Test pagination on relationship fields using first and after parameters."""
+
+    # Query for first 3 books
+    query = """
+    query($authorId: Int!) {
+      author(id: $authorId) {
+        id
+        name
+        books(first: 3) {
+          edges {
+            node {
+              id
+              title
             }
           }
-        }
-        """
-
-        # TODO: get execute_sync to work
-        result = asyncio.run(
-            schema.execute(
-                query,
-                context_value={
-                    "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
-                        bind=session,
-                    ),
-                },
-            )
-        )
-        assert result.errors is None
-
-        # Check pagination results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 3
-        assert books_connection["pageInfo"]["hasNextPage"] is True
-        assert books_connection["pageInfo"]["hasPreviousPage"] is False
-
-        # Store the end cursor for the next pagination query
-        end_cursor = books_connection["pageInfo"]["endCursor"]
-
-        # Query for next 4 books after the cursor
-        query = """
-        query($after: String!) {
-          author(id: 1) {
-            books(first: 4, after: $after) {
-              edges {
-                node {
-                  id
-                  title
-                }
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
-            }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
           }
         }
-        """
+      }
+    }
+    """
 
-        result = asyncio.run(
-            schema.execute(
-                query,
-                variable_values={"after": end_cursor},
-                context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
-            )
+    # TODO: get execute_sync to work
+    result = asyncio.run(
+        sync_session_schema.execute(
+            query,
+            variable_values={
+                "authorId": sync_author.id,
+            },
+            context_value={
+                "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
+                    bind=sync_session,
+                ),
+            },
         )
-        assert result.errors is None
+    )
+    assert result.errors is None
 
-        # Check next page results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 4
-        assert books_connection["pageInfo"]["hasNextPage"] is True
-        assert books_connection["pageInfo"]["hasPreviousPage"] is True
+    # Check pagination results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 3
+    assert books_connection["pageInfo"]["hasNextPage"] is True
+    assert books_connection["pageInfo"]["hasPreviousPage"] is False
+
+    # Store the end cursor for the next pagination query
+    end_cursor = books_connection["pageInfo"]["endCursor"]
+
+    # Query for next 4 books after the cursor
+    query = """
+    query($authorId: Int!, $after: String!) {
+      author(id: $authorId) {
+        books(first: 4, after: $after) {
+          edges {
+            node {
+              id
+              title
+            }
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+        }
+      }
+    }
+    """
+
+    result = asyncio.run(
+        sync_session_schema.execute(
+            query,
+            variable_values={"authorId": sync_author.id, "after": end_cursor},
+            context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=sync_session)},
+        )
+    )
+    assert result.errors is None
+
+    # Check next page results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 4
+    assert books_connection["pageInfo"]["hasNextPage"] is True
+    assert books_connection["pageInfo"]["hasPreviousPage"] is True
 
 
 @pytest.mark.asyncio
 async def test_relationship_pagination_async(
-    base: Any,
-    async_engine: AsyncEngine,
-    mapper: StrawberrySQLAlchemyMapper,
-    async_sessionmaker,
-    author_book_tables,
+    async_session: AsyncSession,
+    async_session_schema: strawberry.Schema,
+    async_author,
 ):
     """Test pagination on relationship fields using async execution."""
-    async with async_engine.begin() as conn:
-        await conn.run_sync(base.metadata.create_all)
-
-    async with async_sessionmaker(expire_on_commit=False) as session:
-        AuthorModel, BookModel = author_book_tables
-
-        @mapper.type(AuthorModel)
-        class Author:
-            pass
-
-        @mapper.type(BookModel)
-        class Book:
-            pass
-
-        @strawberry.type
-        class Query:
-            @strawberry.field
-            def author(self, info: Info, id: int) -> Author:
-                session = info.context["session"]
-                return session.get(AuthorModel, id)
-
-        mapper.finalize()
-        schema = strawberry.Schema(query=Query)
-
-        # Create test data
-        author = AuthorModel(name="Test Author")
-        session.add(author)
-        await session.flush()  # To get the author ID
-
-        # Create 10 books for pagination testing
-        for i in range(10):
-            book = BookModel(title=f"Book {i+1}", author_id=author.id)
-            session.add(book)
-
-        await session.commit()
-        author_id = author.id
-
-        # Query for first 3 books
-        query = """
-        query {
-          author(id: 1) {
-            id
-            name
-            books(first: 3) {
-              edges {
-                node {
-                  id
-                  title
-                }
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
+    # Query for first 3 books
+    query = """
+    query($authorId: Int!) {
+      author(id: $authorId) {
+        id
+        name
+        books(first: 3) {
+          edges {
+            node {
+              id
+              title
             }
           }
-        }
-        """
-
-        loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: session)
-        result = await schema.execute(
-            query, context_value={"sqlalchemy_loader": loader, "session": session}
-        )
-        assert result.errors is None
-
-        # Check pagination results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 3
-        assert books_connection["pageInfo"]["hasNextPage"] is True
-        assert books_connection["pageInfo"]["hasPreviousPage"] is False
-
-        # Store the end cursor for the next pagination query
-        end_cursor = books_connection["pageInfo"]["endCursor"]
-
-        # Query for next 4 books after the cursor
-        query = """
-        query($after: String!) {
-          author(id: 1) {
-            books(first: 4, after: $after) {
-              edges {
-                node {
-                  id
-                  title
-                }
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
-            }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
           }
         }
-        """
+      }
+    }
+    """
 
-        result = await schema.execute(
-            query,
-            variable_values={"after": end_cursor},
-            context_value={"sqlalchemy_loader": loader, "session": session},
-        )
-        assert result.errors is None
+    loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: async_session)
+    result = await async_session_schema.execute(
+        query,
+        variable_values={"authorId": async_author.id},
+        context_value={"sqlalchemy_loader": loader},
+    )
+    assert result.errors is None
 
-        # Check next page results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 4
-        assert books_connection["pageInfo"]["hasNextPage"] is True
-        assert books_connection["pageInfo"]["hasPreviousPage"] is True
+    # Check pagination results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 3
+    assert books_connection["pageInfo"]["hasNextPage"] is True
+    assert books_connection["pageInfo"]["hasPreviousPage"] is False
+
+    # Store the end cursor for the next pagination query
+    end_cursor = books_connection["pageInfo"]["endCursor"]
+
+    # Query for next 4 books after the cursor
+    query = """
+    query($authorId: Int!, $after: String!) {
+      author(id: $authorId) {
+        books(first: 4, after: $after) {
+          edges {
+            node {
+              id
+              title
+            }
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+        }
+      }
+    }
+    """
+
+    result = await async_session_schema.execute(
+        query,
+        variable_values={"authorId": async_author.id, "after": end_cursor},
+        context_value={"sqlalchemy_loader": loader},
+    )
+    assert result.errors is None
+
+    # Check next page results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 4
+    assert books_connection["pageInfo"]["hasNextPage"] is True
+    assert books_connection["pageInfo"]["hasPreviousPage"] is True
 
 
 def test_relationship_pagination_last(
-    base: Any,
-    engine: Engine,
-    mapper: StrawberrySQLAlchemyMapper,
-    sessionmaker: sessionmaker,
-    author_book_tables,
+    sync_session: Session,
+    sync_session_schema: strawberry.Schema,
+    sync_author,
 ):
     """Test pagination on relationship fields using last and before parameters."""
-    base.metadata.create_all(engine)
-    AuthorModel, BookModel = author_book_tables
-
-    with sessionmaker() as session:
-
-        @mapper.type(AuthorModel)
-        class Author:
-            pass
-
-        @mapper.type(BookModel)
-        class Book:
-            pass
-
-        @strawberry.type
-        class Query:
-            @strawberry.field
-            def author(self, info: Info, id: int) -> Author:
-                return session.scalars(select(AuthorModel).filter(AuthorModel.id == id)).first()
-
-        mapper.finalize()
-        schema = strawberry.Schema(query=Query)
-
-        # Create test data
-        author = AuthorModel(name="Test Author")
-        session.add(author)
-        session.flush()  # To get the author ID
-
-        # Create 10 books for pagination testing
-        for i in range(10):
-            book = BookModel(title=f"Book {i+1}", author_id=author.id)
-            session.add(book)
-
-        session.commit()
-
-        # Query for last 3 books (backward pagination)
-        query = """
-        query {
-          author(id: 1) {
-            id
-            name
-            books(last: 3) {
-              edges {
-                node {
-                  id
-                  title
-                }
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
+    # Query for last 3 books (backward pagination)
+    query = """
+    query($authorId: Int!) {
+      author(id: $authorId) {
+        id
+        name
+        books(last: 3) {
+          edges {
+            node {
+              id
+              title
             }
           }
-        }
-        """
-
-        result = asyncio.run(
-            schema.execute(
-                query,
-                context_value={
-                    "sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session),
-                },
-            )
-        )
-        assert result.errors is None
-
-        # Check backward pagination results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 3
-        # When getting the last N items, there should be no next page
-        assert books_connection["pageInfo"]["hasNextPage"] is False
-        # But there should be previous items
-        assert books_connection["pageInfo"]["hasPreviousPage"] is True
-
-        # Get the start cursor for the before parameter
-        start_cursor = books_connection["pageInfo"]["startCursor"]
-
-        # Query for previous 4 books before the cursor
-        query = """
-        query($before: String!) {
-          author(id: 1) {
-            books(last: 4, before: $before) {
-              edges {
-                node {
-                  id
-                  title
-                }
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
-            }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
           }
         }
-        """
+      }
+    }
+    """
 
-        result = asyncio.run(
-            schema.execute(
-                query,
-                variable_values={"before": start_cursor},
-                context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=session)},
-            )
+    result = asyncio.run(
+        sync_session_schema.execute(
+            query,
+            variable_values={
+                "authorId": sync_author.id,
+            },
+            context_value={
+                "sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=sync_session),
+            },
         )
-        assert result.errors is None
+    )
+    assert result.errors is None
 
-        # Check previous page results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 4
-        assert books_connection["pageInfo"]["hasNextPage"] is True
-        # If we have less than 7 books before the cursor, we should have previous page
-        assert books_connection["pageInfo"]["hasPreviousPage"] is True
+    # Check backward pagination results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 3
+    # When getting the last N items, there should be no next page
+    assert books_connection["pageInfo"]["hasNextPage"] is False
+    # But there should be previous items
+    assert books_connection["pageInfo"]["hasPreviousPage"] is True
+
+    # Get the start cursor for the before parameter
+    start_cursor = books_connection["pageInfo"]["startCursor"]
+
+    # Query for previous 4 books before the cursor
+    query = """
+    query($authorId: Int!, $before: String!) {
+      author(id: $authorId) {
+        books(last: 4, before: $before) {
+          edges {
+            node {
+              id
+              title
+            }
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+        }
+      }
+    }
+    """
+
+    result = asyncio.run(
+        sync_session_schema.execute(
+            query,
+            variable_values={"authorId": sync_author.id, "before": start_cursor},
+            context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=sync_session)},
+        )
+    )
+    assert result.errors is None
+
+    # Check previous page results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 4
+    assert books_connection["pageInfo"]["hasNextPage"] is True
+    # If we have less than 7 books before the cursor, we should have previous page
+    assert books_connection["pageInfo"]["hasPreviousPage"] is True
 
 
 @pytest.mark.asyncio
 async def test_relationship_pagination_last_async(
-    base: Any,
-    async_engine: AsyncEngine,
-    mapper: StrawberrySQLAlchemyMapper,
-    async_sessionmaker,
-    author_book_tables,
+    async_session: AsyncSession,
+    async_session_schema: strawberry.Schema,
+    async_author,
 ):
     """Test backward pagination on relationship fields using async execution."""
-    async with async_engine.begin() as conn:
-        await conn.run_sync(base.metadata.create_all)
-
-    AuthorModel, BookModel = author_book_tables
-
-    async with async_sessionmaker(expire_on_commit=False) as session:
-
-        @mapper.type(AuthorModel)
-        class Author:
-            pass
-
-        @mapper.type(BookModel)
-        class Book:
-            pass
-
-        @strawberry.type
-        class Query:
-            @strawberry.field
-            def author(self, info: Info, id: int) -> Author:
-                session = info.context["session"]
-                return session.get(AuthorModel, id)
-
-        mapper.finalize()
-        schema = strawberry.Schema(query=Query)
-
-        # Create test data
-        author = AuthorModel(name="Test Author")
-        session.add(author)
-        await session.flush()  # To get the author ID
-
-        # Create 10 books for pagination testing
-        for i in range(10):
-            book = BookModel(title=f"Book {i+1}", author_id=author.id)
-            session.add(book)
-
-        await session.commit()
-        author_id = author.id
-
-        # Query for last 3 books (backward pagination)
-        query = """
-        query {
-          author(id: 1) {
-            id
-            name
-            books(last: 3) {
-              edges {
-                node {
-                  id
-                  title
-                }
-                cursor
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
+    # Query for last 3 books (backward pagination)
+    query = """
+    query($authorId: Int!) {
+      author(id: $authorId) {
+        id
+        name
+        books(last: 3) {
+          edges {
+            node {
+              id
+              title
             }
+            cursor
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
           }
         }
-        """
+      }
+    }
+    """
 
-        loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: session)
-        result = await schema.execute(
-            query, context_value={"sqlalchemy_loader": loader, "session": session}
-        )
-        assert result.errors is None
+    loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: async_session)
+    result = await async_session_schema.execute(
+        query,
+        variable_values={"authorId": async_author.id},
+        context_value={"sqlalchemy_loader": loader},
+    )
+    assert result.errors is None
 
-        # Check backward pagination results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 3
-        # When getting the last N items, there should be no next page
-        assert books_connection["pageInfo"]["hasNextPage"] is False
-        # But there should be previous items
-        assert books_connection["pageInfo"]["hasPreviousPage"] is True
+    # Check backward pagination results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 3
+    # When getting the last N items, there should be no next page
+    assert books_connection["pageInfo"]["hasNextPage"] is False
+    # But there should be previous items
+    assert books_connection["pageInfo"]["hasPreviousPage"] is True
 
-        # Get the start cursor for the before parameter
-        start_cursor = books_connection["pageInfo"]["startCursor"]
+    # Get the start cursor for the before parameter
+    start_cursor = books_connection["pageInfo"]["startCursor"]
 
-        # Query for previous 4 books before the cursor
-        query = """
-        query($before: String!) {
-          author(id: 1) {
-            books(last: 4, before: $before) {
-              edges {
-                node {
-                  id
-                  title
-                }
-              }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
+    # Query for previous 4 books before the cursor
+    query = """
+    query($authorId: Int!, $before: String!) {
+      author(id: $authorId) {
+        books(last: 4, before: $before) {
+          edges {
+            node {
+              id
+              title
             }
           }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
         }
-        """
+      }
+    }
+    """
 
-        result = await schema.execute(
-            query,
-            variable_values={"before": start_cursor},
-            context_value={"sqlalchemy_loader": loader, "session": session},
-        )
-        assert result.errors is None
+    result = await async_session_schema.execute(
+        query,
+        variable_values={"authorId": async_author.id, "before": start_cursor},
+        context_value={"sqlalchemy_loader": loader},
+    )
+    assert result.errors is None
 
-        # Check previous page results
-        books_connection = result.data["author"]["books"]
-        assert len(books_connection["edges"]) == 4
-        assert books_connection["pageInfo"]["hasNextPage"] is True
-        # If we have less than 7 books before the cursor, we should have previous page
-        assert books_connection["pageInfo"]["hasPreviousPage"] is True
+    # Check previous page results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 4
+    assert books_connection["pageInfo"]["hasNextPage"] is True
+    # If we have less than 7 books before the cursor, we should have previous page
+    assert books_connection["pageInfo"]["hasPreviousPage"] is True
