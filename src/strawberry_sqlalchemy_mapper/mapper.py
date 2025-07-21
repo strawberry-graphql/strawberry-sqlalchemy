@@ -656,6 +656,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                         relationship_key,
                     )
                 return related_objects
+
             setattr(resolve, _IS_GENERATED_RESOLVER_KEY, True)
             return resolve
 
