@@ -655,9 +655,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     related_objects = await loader.loader_for(relationship).load(
                         relationship_key,
                     )
-                setattr(resolve, _IS_GENERATED_RESOLVER_KEY, True)
                 return related_objects
-
+            setattr(resolve, _IS_GENERATED_RESOLVER_KEY, True)
             return resolve
 
     def connection_resolver_for(
