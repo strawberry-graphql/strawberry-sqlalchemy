@@ -137,26 +137,21 @@ def async_session_schema(
     mapper.finalize()
     return strawberry.Schema(query=Query)
 
-
-def test_relationship_pagination(
-    sync_session: Session,
-    sync_session_schema: strawberry.Schema,
-    sync_author,
-):
-    """Test pagination on relationship fields using first and after parameters."""
-
-    # Query for first 3 books
-    query = """
-    query($authorId: Int!) {
+@pytest.fixture
+def general_query() -> str:
+    """General purpose query."""
+    return """
+    query($authorId: Int!, $first: Int, $after: String, $last: Int, $before: String) {
       author(id: $authorId) {
         id
         name
-        books(first: 3) {
+        books(first: $first, after: $after, last: $last, before: $before) {
           edges {
             node {
               id
               title
             }
+            cursor
           }
           pageInfo {
             hasNextPage
@@ -169,12 +164,22 @@ def test_relationship_pagination(
     }
     """
 
+
+def test_relationship_pagination(
+    sync_session: Session,
+    sync_session_schema: strawberry.Schema,
+    general_query: str,
+    sync_author,
+):
+    """Test pagination on relationship fields using first and after parameters."""
+
     # TODO: get execute_sync to work
     result = asyncio.run(
         sync_session_schema.execute(
-            query,
+            general_query,
             variable_values={
                 "authorId": sync_author.id,
+                "first": 3,
             },
             context_value={
                 "sqlalchemy_loader": StrawberrySQLAlchemyLoader(
@@ -194,32 +199,14 @@ def test_relationship_pagination(
     # Store the end cursor for the next pagination query
     end_cursor = books_connection["pageInfo"]["endCursor"]
 
-    # Query for next 4 books after the cursor
-    query = """
-    query($authorId: Int!, $after: String!) {
-      author(id: $authorId) {
-        books(first: 4, after: $after) {
-          edges {
-            node {
-              id
-              title
-            }
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-        }
-      }
-    }
-    """
-
     result = asyncio.run(
         sync_session_schema.execute(
-            query,
-            variable_values={"authorId": sync_author.id, "after": end_cursor},
+            general_query,
+            variable_values={
+                "authorId": sync_author.id,
+                "first": 4,
+                "after": end_cursor
+            },
             context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=sync_session)},
         )
     )
@@ -236,37 +223,15 @@ def test_relationship_pagination(
 async def test_relationship_pagination_async(
     async_session: AsyncSession,
     async_session_schema: strawberry.Schema,
+    general_query: str,
     async_author,
 ):
     """Test pagination on relationship fields using async execution."""
-    # Query for first 3 books
-    query = """
-    query($authorId: Int!) {
-      author(id: $authorId) {
-        id
-        name
-        books(first: 3) {
-          edges {
-            node {
-              id
-              title
-            }
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-        }
-      }
-    }
-    """
 
     loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: async_session)
     result = await async_session_schema.execute(
-        query,
-        variable_values={"authorId": async_author.id},
+        general_query,
+        variable_values={"authorId": async_author.id, "first": 3},
         context_value={"sqlalchemy_loader": loader},
     )
     assert result.errors is None
@@ -280,31 +245,9 @@ async def test_relationship_pagination_async(
     # Store the end cursor for the next pagination query
     end_cursor = books_connection["pageInfo"]["endCursor"]
 
-    # Query for next 4 books after the cursor
-    query = """
-    query($authorId: Int!, $after: String!) {
-      author(id: $authorId) {
-        books(first: 4, after: $after) {
-          edges {
-            node {
-              id
-              title
-            }
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-        }
-      }
-    }
-    """
-
     result = await async_session_schema.execute(
-        query,
-        variable_values={"authorId": async_author.id, "after": end_cursor},
+        general_query,
+        variable_values={"authorId": async_author.id, "first": 4, "after": end_cursor},
         context_value={"sqlalchemy_loader": loader},
     )
     assert result.errors is None
@@ -319,38 +262,16 @@ async def test_relationship_pagination_async(
 def test_relationship_pagination_last(
     sync_session: Session,
     sync_session_schema: strawberry.Schema,
+    general_query: str,
     sync_author,
 ):
     """Test pagination on relationship fields using last and before parameters."""
-    # Query for last 3 books (backward pagination)
-    query = """
-    query($authorId: Int!) {
-      author(id: $authorId) {
-        id
-        name
-        books(last: 3) {
-          edges {
-            node {
-              id
-              title
-            }
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-        }
-      }
-    }
-    """
 
     result = asyncio.run(
         sync_session_schema.execute(
-            query,
+            general_query,
             variable_values={
-                "authorId": sync_author.id,
+                "authorId": sync_author.id, "last": 3,
             },
             context_value={
                 "sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=sync_session),
@@ -370,32 +291,10 @@ def test_relationship_pagination_last(
     # Get the start cursor for the before parameter
     start_cursor = books_connection["pageInfo"]["startCursor"]
 
-    # Query for previous 4 books before the cursor
-    query = """
-    query($authorId: Int!, $before: String!) {
-      author(id: $authorId) {
-        books(last: 4, before: $before) {
-          edges {
-            node {
-              id
-              title
-            }
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-        }
-      }
-    }
-    """
-
     result = asyncio.run(
         sync_session_schema.execute(
-            query,
-            variable_values={"authorId": sync_author.id, "before": start_cursor},
+            general_query,
+            variable_values={"authorId": sync_author.id, "last": 4, "before": start_cursor},
             context_value={"sqlalchemy_loader": StrawberrySQLAlchemyLoader(bind=sync_session)},
         )
     )
@@ -413,38 +312,15 @@ def test_relationship_pagination_last(
 async def test_relationship_pagination_last_async(
     async_session: AsyncSession,
     async_session_schema: strawberry.Schema,
+    general_query: str,
     async_author,
 ):
     """Test backward pagination on relationship fields using async execution."""
-    # Query for last 3 books (backward pagination)
-    query = """
-    query($authorId: Int!) {
-      author(id: $authorId) {
-        id
-        name
-        books(last: 3) {
-          edges {
-            node {
-              id
-              title
-            }
-            cursor
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-        }
-      }
-    }
-    """
 
     loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: async_session)
     result = await async_session_schema.execute(
-        query,
-        variable_values={"authorId": async_author.id},
+        general_query,
+        variable_values={"authorId": async_author.id, "last": 3,},
         context_value={"sqlalchemy_loader": loader},
     )
     assert result.errors is None
@@ -460,31 +336,10 @@ async def test_relationship_pagination_last_async(
     # Get the start cursor for the before parameter
     start_cursor = books_connection["pageInfo"]["startCursor"]
 
-    # Query for previous 4 books before the cursor
-    query = """
-    query($authorId: Int!, $before: String!) {
-      author(id: $authorId) {
-        books(last: 4, before: $before) {
-          edges {
-            node {
-              id
-              title
-            }
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-        }
-      }
-    }
-    """
 
     result = await async_session_schema.execute(
-        query,
-        variable_values={"authorId": async_author.id, "before": start_cursor},
+        general_query,
+        variable_values={"authorId": async_author.id, "last": 4, "before": start_cursor},
         context_value={"sqlalchemy_loader": loader},
     )
     assert result.errors is None
@@ -495,3 +350,46 @@ async def test_relationship_pagination_last_async(
     assert books_connection["pageInfo"]["hasNextPage"] is True
     # If we have less than 7 books before the cursor, we should have previous page
     assert books_connection["pageInfo"]["hasPreviousPage"] is True
+
+@pytest.mark.asyncio
+async def test_relationship_pagination_invalid_args(
+    async_session: AsyncSession,
+    async_session_schema: strawberry.Schema,
+    async_author,
+    general_query
+):
+    """Test invalid pagination args."""
+    loader = StrawberrySQLAlchemyLoader(async_bind_factory=lambda: async_session)
+    result = await async_session_schema.execute(
+        general_query,
+        variable_values={"authorId": async_author.id, "first": 3},
+        context_value={"sqlalchemy_loader": loader},
+    )
+    assert result.errors is None
+
+    # Check pagination results
+    books_connection = result.data["author"]["books"]
+    assert len(books_connection["edges"]) == 3
+    assert books_connection["pageInfo"]["hasNextPage"] is True
+    assert books_connection["pageInfo"]["hasPreviousPage"] is False
+
+    # Store the end cursor for the next pagination query
+    end_cursor = books_connection["pageInfo"]["endCursor"]
+
+    result = await async_session_schema.execute(
+        general_query,
+        variable_values={"authorId": async_author.id, "first": 2, "before": end_cursor}
+    )
+    assert result.errors is not None, "First and before should cause error"
+
+    result = await async_session_schema.execute(
+        general_query,
+        variable_values={"authorId": async_author.id, "last": 2, "after": end_cursor}
+    )
+    assert result.errors is not None, "Last and after should cause error"
+
+    result = await async_session_schema.execute(
+        general_query,
+        variable_values={"authorId": async_author.id, "first": 2, "last": 3}
+    )
+    assert result.errors is not None, "First and last should cause error"
