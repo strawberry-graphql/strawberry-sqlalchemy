@@ -116,7 +116,7 @@ query {
 }
 ```
 
-Get all books before a spcific book's cursor:
+Get all books before a specific book's cursor:
 
 ```gql
 query($beforeBook: String) {
@@ -141,7 +141,7 @@ query($beforeBook: String) {
 }
 ```
 
-Get the last three books for a specific author before a spcific book's cursor:
+Get the last three books for a specific author before a specific book's cursor:
 
 ```gql
 query($beforeBook: String) {

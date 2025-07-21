@@ -130,7 +130,6 @@ class StrawberrySQLAlchemyLoader:
     Creates DataLoader instances on-the-fly for SQLAlchemy relationships
     """
 
-    _loaders: Dict[RelationshipProperty, PaginatedLoader] = {}
 
     def __init__(
         self,
@@ -142,7 +141,7 @@ class StrawberrySQLAlchemyLoader:
             ]
         ] = None,
     ) -> None:
-        self._loaders = {}
+        self._loaders: Dict[RelationshipProperty, PaginatedLoader] = {}
         self._bind = bind
         self._async_bind_factory = async_bind_factory
         self._logger = logging.getLogger("strawberry_sqlalchemy_mapper")
