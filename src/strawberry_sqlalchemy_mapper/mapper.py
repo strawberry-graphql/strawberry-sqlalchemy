@@ -602,7 +602,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
         if relationship.uselist:
 
-            async def resolve(
+            async def resolve_list(
                 self,
                 info: Info,
                 first: Optional[int] = None,
@@ -635,8 +635,8 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     )
                 return related_objects
 
-            setattr(resolve, _IS_GENERATED_RESOLVER_KEY, True)
-            return resolve
+            setattr(resolve_list, _IS_GENERATED_RESOLVER_KEY, True)
+            return resolve_list
 
         else:
 

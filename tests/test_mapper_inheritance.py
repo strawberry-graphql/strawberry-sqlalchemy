@@ -126,7 +126,7 @@ type Query {
   apisb: ApiB!
 }
 
-    '''
+    '''  # noqa: E501 - long lines needed for exact string matches
 
 
 def test_types_with_inheritance_should_respect_exclude_fields(
@@ -227,7 +227,7 @@ type Query {
   apisb: ApiB!
 }
 
-    '''
+    '''  # noqa: E501 - long lines needed for exact string matches
 
 
 @pytest.fixture

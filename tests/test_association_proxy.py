@@ -462,7 +462,7 @@ def get_schema_should_not_raise_UnsupportedAssociation_if_excluded_expected_shem
     type Query {
       departments: Department!
     }
-    '''
+    '''  # noqa: E501 - long lines needed for exact string matches
 
 
 def get_test_relationships_schema_with_association_proxy_expected_schema():
@@ -535,7 +535,7 @@ type PageInfo {
 type Query {
   buildings: Building!
 }
-    '''
+    '''  # noqa: E501 - long lines needed for exact string matches
 
 
 def create_test_data(

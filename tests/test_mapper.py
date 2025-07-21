@@ -361,7 +361,7 @@ def test_relationships_schema(employee_and_department_tables, mapper):
     type Query {
       departments: Department!
     }
-    '''
+    '''  # noqa: E501 - long lines needed for exact string matches
     assert str(schema) == textwrap.dedent(expected).strip()
 
 

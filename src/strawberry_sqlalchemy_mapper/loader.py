@@ -78,16 +78,17 @@ class PaginatedLoader:
         last: Optional[int] = None,
         before: Optional[str] = None,
     ) -> DataLoader:
-        # Create a cache key from the pagination parameters
-        pagination_key = (
-            ("first", first) if first is not None else None,
-            ("after", after) if after is not None else None,
-            ("last", last) if last is not None else None,
-            ("before", before) if before is not None else None,
-        )
-
         # Filter out None values for the key
-        pagination_key = tuple(item for item in pagination_key if item is not None)
+        pagination_key = tuple(
+            item
+            for item in (
+                ("first", first) if first is not None else None,
+                ("after", after) if after is not None else None,
+                ("last", last) if last is not None else None,
+                ("before", before) if before is not None else None,
+            )
+            if item is not None
+        )
 
         # Create or retrieve a DataLoader for this specific pagination
         # configuration
