@@ -132,11 +132,7 @@ class StrawberrySQLAlchemyLazy(LazyType):
 def _get_relationship_key(model: object, relationship: RelationshipProperty) -> Tuple[str, ...]:
     """Return relationship key for data loader."""
     return tuple(
-        [
-            getattr(model, local.key)
-            for local, _ in relationship.local_remote_pairs or []
-            if local.key
-        ],
+        getattr(model, local.key) for local, _ in relationship.local_remote_pairs or [] if local.key
     )
 
 
