@@ -2,6 +2,9 @@ import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 from strawberry_sqlalchemy_mapper import StrawberrySQLAlchemyLoader
+from strawberry_sqlalchemy_mapper.pagination_cursor_utils import (
+    encode_cursor_index,
+)
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -175,3 +178,78 @@ async def test_loader_for_secondary(engine, base, sessionmaker, secondary_tables
         )
         departments = await loader.load(key)
         assert {d.name for d in departments} == {"d1", "d2"}
+
+
+@pytest.mark.asyncio
+async def test_loader_for_pagination_valid(engine, base, sessionmaker, many_to_one_tables):
+    Employee, Department = many_to_one_tables
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        d1 = Department(
+            name="d1",
+            employees=[
+                Employee(name="e1"),
+                Employee(name="e2"),
+                Employee(name="e3"),
+                Employee(name="e4"),
+            ],
+        )
+        d_empty = Department(name="empty")
+        session.add(d1)
+        session.add(d_empty)
+        session.flush()
+        session.commit()
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+        paginated_loader = base_loader.loader_for(Department.employees.property)
+        first_loader = paginated_loader.loader_for(first=2)
+        employees = await first_loader.load((d1.id,))
+        assert {e.name for e in employees} == {"e1", "e2"}
+        last_loader = paginated_loader.loader_for(last=2)
+        employees = await last_loader.load((d1.id,))
+        assert {e.name for e in employees} == {"e3", "e4"}
+        before_loader = paginated_loader.loader_for(before=encode_cursor_index(3))
+        employees = await before_loader.load((d1.id,))
+        assert {e.name for e in employees} == {"e1", "e2", "e3"}
+        after_loader = paginated_loader.loader_for(after=encode_cursor_index(0))
+        employees = await after_loader.load((d1.id,))
+        assert {e.name for e in employees} == {"e2", "e3", "e4"}
+        first_after_loader = paginated_loader.loader_for(first=2, after=encode_cursor_index(0))
+        employees = await first_after_loader.load((d1.id,))
+        assert {e.name for e in employees} == {"e2", "e3"}
+        last_before_loader = paginated_loader.loader_for(last=2, before=encode_cursor_index(2))
+        employees = await last_before_loader.load((d1.id,))
+        assert {e.name for e in employees} == {"e1", "e2"}
+
+
+@pytest.mark.asyncio
+async def test_loader_for_pagination_invalid(engine, base, sessionmaker, many_to_one_tables):
+    Employee, Department = many_to_one_tables
+    base.metadata.create_all(engine)
+
+    with sessionmaker() as session:
+        d1 = Department(
+            name="d1",
+            employees=[
+                Employee(name="e1"),
+                Employee(name="e2"),
+                Employee(name="e3"),
+                Employee(name="e4"),
+            ],
+        )
+        d_empty = Department(name="empty")
+        session.add(d1)
+        session.add(d_empty)
+        session.flush()
+        session.commit()
+        base_loader = StrawberrySQLAlchemyLoader(bind=session)
+        paginated_loader = base_loader.loader_for(Department.employees.property)
+        first_last_loader = paginated_loader.loader_for(first=2, last=3)
+        with pytest.raises(ValueError, match="Cannot provide"):
+            await first_last_loader.load((d1.id,))
+        first_before_loader = paginated_loader.loader_for(first=2, before=encode_cursor_index(3))
+        with pytest.raises(ValueError, match="Cannot provide"):
+            await first_before_loader.load((d1.id,))
+        last_after_loader = paginated_loader.loader_for(last=2, after=encode_cursor_index(0))
+        with pytest.raises(ValueError, match="Cannot provide"):
+            await last_after_loader.load((d1.id,))
