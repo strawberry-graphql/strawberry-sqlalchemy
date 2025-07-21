@@ -36,11 +36,9 @@ class PaginatedLoader:
 
     def __init__(
         self,
-        parent_loader: StrawberrySQLAlchemyLoader,
         relationship: RelationshipProperty,
         load_implementation: Callable,
     ):
-        self.parent_loader: StrawberrySQLAlchemyLoader = parent_loader
         self.relationship: RelationshipProperty = relationship
         self.load_implementation: Callable = load_implementation
         self._loaders: Dict[Tuple, DataLoader] = {}
@@ -290,7 +288,6 @@ class StrawberrySQLAlchemyLoader:
                 return [grouped_keys[key][0] if grouped_keys[key] else None for key in keys]
 
             self._loaders[relationship] = PaginatedLoader(
-                parent_loader=self,
                 relationship=relationship,
                 load_implementation=load_fn,
             )
