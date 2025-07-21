@@ -88,6 +88,7 @@ from strawberry_sqlalchemy_mapper.exc import (
     UnsupportedDescriptorType,
 )
 from strawberry_sqlalchemy_mapper.field import field
+from strawberry_sqlalchemy_mapper.loader import StrawberrySQLAlchemyLoader
 from strawberry_sqlalchemy_mapper.pagination_cursor_utils import decode_cursor_index
 from strawberry_sqlalchemy_mapper.relay import (
     resolve_model_id,
@@ -127,6 +128,14 @@ class StrawberrySQLAlchemyLazy(LazyType):
     def resolve_type(self) -> Type[Any]:
         assert self.mapper is not None
         return self.mapper.mapped_types[self.type_name]
+
+
+def _get_loader_from_info(info: Info) -> StrawberrySQLAlchemyLoader:
+    """Extracts the sqlalchemy loader from info."""
+    if isinstance(info.context, dict):
+        return cast(StrawberrySQLAlchemyLoader, info.context["sqlalchemy_loader"])
+    else:
+        return cast(StrawberrySQLAlchemyLoader, info.context.sqlalchemy_loader)
 
 
 def _get_relationship_key(model: object, relationship: RelationshipProperty) -> Tuple[str, ...]:
@@ -493,13 +502,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
 
             total_count: Optional[int] = None
             if last is not None or before is not None:
-                if isinstance(info.context, dict):
-                    loader = info.context["sqlalchemy_loader"]
-                else:
-                    loader = info.context.sqlalchemy_loader
-                total_count = await loader.loader_for(
-                    relationship
-                ).get_relationship_record_count_for_key(_get_relationship_key(self, relationship))
+                loader = _get_loader_from_info(info)
+                total_count = await loader.get_relationship_record_count_for_key(
+                    relationship, _get_relationship_key(self, relationship)
+                )
 
             return StrawberrySQLAlchemyMapper._resolve_connection_edges(
                 related_objects,
@@ -555,7 +561,6 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         if total_count is None and (last is not None or before is not None):
             raise ValueError("total_count must be set for last/before.")
 
-        edges: List[Any] = []
         decoded_before_index = None if before is None else decode_cursor_index(before)
         decoded_after_index = None if after is None else decode_cursor_index(after)
         start_index = 0
@@ -617,10 +622,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     if any(item is None for item in relationship_key):
                         return []
 
-                    if isinstance(info.context, dict):
-                        loader = info.context["sqlalchemy_loader"]
-                    else:
-                        loader = info.context.sqlalchemy_loader
+                    loader = _get_loader_from_info(info)
 
                     related_objects = await loader.loader_for(relationship).load(
                         relationship_key,
@@ -647,11 +649,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                     )
                     if any(item is None for item in relationship_key):
                         return None
-                    if isinstance(info.context, dict):
-                        loader = info.context["sqlalchemy_loader"]
-                    else:
-                        loader = info.context.sqlalchemy_loader
-
+                    loader = _get_loader_from_info(info)
                     related_objects = await loader.loader_for(relationship).load(
                         relationship_key,
                     )

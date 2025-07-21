@@ -6,7 +6,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncContextManager,
-    Awaitable,
     Callable,
     Dict,
     List,
@@ -46,31 +45,6 @@ class PaginatedLoader:
         self.load_implementation: Callable = load_implementation
         self._loaders: Dict[Tuple, DataLoader] = {}
 
-    async def _get_relationship_record_count_for_keys(
-        self,
-        keys: List[Tuple[object, ...]],
-    ) -> int:
-        related_model = self.relationship.entity.entity
-        count_query = select(func.count()).select_from(
-            select(related_model)
-            .filter(
-                tuple_(
-                    *[remote for _, remote in self.relationship.local_remote_pairs or []],
-                ).in_(
-                    keys,
-                ),
-            )
-            .subquery(),
-        )
-        sub_result = await self.parent_loader._scalar_one(count_query)
-        return cast(int, sub_result or 0)
-
-    async def get_relationship_record_count_for_key(
-        self,
-        key: Tuple[object, ...],
-    ) -> int:
-        return await self._get_relationship_record_count_for_keys([key])
-
     def loader_for(
         self,
         first: Optional[int] = None,
@@ -97,7 +71,6 @@ class PaginatedLoader:
             # pagination args
             async def load_fn(keys: List[Any]) -> List[Any]:
                 return await self.load_implementation(
-                    num_records_fn=self._get_relationship_record_count_for_keys,
                     keys=keys,
                     first=first,
                     after=after,
@@ -129,7 +102,6 @@ class StrawberrySQLAlchemyLoader:
     """
     Creates DataLoader instances on-the-fly for SQLAlchemy relationships
     """
-
 
     def __init__(
         self,
@@ -166,6 +138,93 @@ class StrawberrySQLAlchemyLoader:
             assert self._bind is not None
             return self._bind.scalar(*args, **kwargs)
 
+    async def _get_relationship_record_count_for_keys(
+        self,
+        relationship: RelationshipProperty,
+        keys: List[Tuple[object, ...]],
+    ) -> int:
+        related_model = relationship.entity.entity
+        count_query = select(func.count()).select_from(
+            select(related_model)
+            .filter(
+                tuple_(
+                    *[remote for _, remote in relationship.local_remote_pairs or []],
+                ).in_(
+                    keys,
+                ),
+            )
+            .subquery(),
+        )
+        sub_result = await self._scalar_one(count_query)
+        return cast(int, sub_result or 0)
+
+    async def get_relationship_record_count_for_key(
+        self,
+        relationship: RelationshipProperty,
+        key: Tuple[object, ...],
+    ) -> int:
+        return await self._get_relationship_record_count_for_keys(relationship, [key])
+
+    async def _get_pagination_offset_limit(
+        self,
+        keys: List[Tuple[object, ...]],
+        relationship: RelationshipProperty,
+        first: Optional[int] = None,
+        after: Optional[str] = None,
+        last: Optional[int] = None,
+        before: Optional[str] = None,
+    ) -> Tuple[int, int]:
+        """Returns [offset, limit] for pagination.
+
+        If either is 0, it should not be applied to the query.
+        """
+        # Extract offset from cursor if provided
+        offset: int = 0
+        limit: int = 0
+        if after:
+            decoded_after = decode_cursor_index(after)
+            if decoded_after is not None and decoded_after >= 0:
+                offset = decoded_after + 1
+
+        # For before/last pagination, we need to handle differently
+        # First, we need to determine the total count and before index
+        before_index: Optional[int] = None
+        if before:
+            decoded_before = decode_cursor_index(before)
+            if decoded_before is not None:
+                before_index = decoded_before
+
+        if last is not None:
+            # For just 'last' without 'before', we need the last N items
+            # Get total count first
+            total_count = await self._get_relationship_record_count_for_keys(
+                relationship,
+                keys,
+            )
+
+            if before_index is not None:
+                # If before_index is provided, we need to calculate how
+                # many items are before that index
+                items_before_cursor = min(before_index, total_count)
+
+                # Calculate the offset to get last N items before the cursor
+                offset = max(0, items_before_cursor - last)
+                limit = min(last, items_before_cursor)
+            else:
+                # Calculate offset for last N items
+                offset = max(0, total_count - last)
+                limit = min(last, total_count)
+        elif before_index is not None:
+            # If just 'before' without 'last', retrieve all items
+            # before the cursor
+            if before_index > 0:
+                limit = before_index
+        else:
+            # Standard forward-pagination
+            if first is not None and first >= 0:
+                limit = first
+        return offset, limit
+
     def loader_for(self, relationship: RelationshipProperty) -> PaginatedLoader:
         """Retrieve or create a PaginatedLoader for the given relationship."""
         try:
@@ -174,7 +233,6 @@ class StrawberrySQLAlchemyLoader:
             related_model = relationship.entity.entity
 
             async def load_fn(
-                num_records_fn: Callable[[List[Tuple]], Awaitable[int]],
                 keys: List[Tuple],
                 first: Optional[int] = None,
                 after: Optional[str] = None,
@@ -198,48 +256,14 @@ class StrawberrySQLAlchemyLoader:
                 if relationship.order_by:
                     query = query.order_by(*relationship.order_by)
 
-                # Extract offset from cursor if provided
-                offset: int = 0
-                limit: int = 0
-                if after:
-                    decoded_after = decode_cursor_index(after)
-                    if decoded_after is not None and decoded_after >= 0:
-                        offset = decoded_after + 1
-
-                # For before/last pagination, we need to handle differently
-                # First, we need to determine the total count and before index
-                before_index: Optional[int] = None
-                if before:
-                    decoded_before = decode_cursor_index(before)
-                    if decoded_before is not None:
-                        before_index = decoded_before
-
-                if last is not None:
-                    # For just 'last' without 'before', we need the last N items
-                    # Get total count first
-                    total_count = await num_records_fn(keys)
-
-                    if before_index is not None:
-                        # If before_index is provided, we need to calculate how
-                        # many items are before that index
-                        items_before_cursor = min(before_index, total_count)
-
-                        # Calculate the offset to get last N items before the cursor
-                        offset = max(0, items_before_cursor - last)
-                        limit = min(last, items_before_cursor)
-                    else:
-                        # Calculate offset for last N items
-                        offset = max(0, total_count - last)
-                        limit = min(last, total_count)
-                elif before_index is not None:
-                    # If just 'before' without 'last', retrieve all items
-                    # before the cursor
-                    if before_index > 0:
-                        limit = before_index
-                else:
-                    # Standard forward-pagination
-                    if first is not None and first >= 0:
-                        limit = first
+                offset, limit = await self._get_pagination_offset_limit(
+                    keys,
+                    relationship,
+                    first=first,
+                    after=after,
+                    last=last,
+                    before=before,
+                )
 
                 # Apply the calculated offset and limit
                 if offset > 0:
