@@ -154,7 +154,7 @@ class StrawberrySQLAlchemyLoader:
             .subquery(),
         )
         sub_result = await self._scalar_one(count_query)
-        return cast(int, sub_result or 0)
+        return cast("int", sub_result or 0)
 
     async def get_relationship_record_count_for_key(
         self,

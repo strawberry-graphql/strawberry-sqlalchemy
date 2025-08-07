@@ -59,7 +59,7 @@ def sync_author(
 
     # Create 10 books for pagination testing
     for i in range(10):
-        book = BookModel(title=f"Book {i+1}", author_id=author.id)
+        book = BookModel(title=f"Book {i + 1}", author_id=author.id)
         sync_session.add(book)
 
     sync_session.commit()
@@ -83,7 +83,7 @@ async def async_author(
 
     # Create 10 books for pagination testing
     for i in range(10):
-        book = BookModel(title=f"Book {i+1}", author_id=author.id)
+        book = BookModel(title=f"Book {i + 1}", author_id=author.id)
         async_session.add(book)
 
     await async_session.commit()

@@ -133,9 +133,9 @@ class StrawberrySQLAlchemyLazy(LazyType):
 def _get_loader_from_info(info: Info) -> StrawberrySQLAlchemyLoader:
     """Extracts the sqlalchemy loader from info."""
     if isinstance(info.context, dict):
-        return cast(StrawberrySQLAlchemyLoader, info.context["sqlalchemy_loader"])
+        return cast("StrawberrySQLAlchemyLoader", info.context["sqlalchemy_loader"])
     else:
-        return cast(StrawberrySQLAlchemyLoader, info.context.sqlalchemy_loader)
+        return cast("StrawberrySQLAlchemyLoader", info.context.sqlalchemy_loader)
 
 
 def _get_relationship_key(model: object, relationship: RelationshipProperty) -> Tuple[str, ...]:
