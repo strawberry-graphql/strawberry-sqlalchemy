@@ -61,8 +61,8 @@ type ApiB {
   relationshipB: ModelB
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelA {
@@ -89,8 +89,8 @@ type ModelB {
   id: String!
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelBConnection {
@@ -126,7 +126,7 @@ type Query {
   apisb: ApiB!
 }
 
-    '''
+    '''  # noqa: E501 - long lines needed for exact string matches
 
 
 def test_types_with_inheritance_should_respect_exclude_fields(
@@ -162,8 +162,8 @@ type ApiB {
   relationshipB: ModelB
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelA {
@@ -190,8 +190,8 @@ type ModelB {
   id: String!
   parentId: String
   parent: ModelB
-  relatedA: ModelAConnection!
-  children: ModelBConnection!
+  relatedA(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelAConnection!
+  children(first: Int = null, after: String = null, last: Int = null, before: String = null): ModelBConnection!
 }
 
 type ModelBConnection {
@@ -227,7 +227,7 @@ type Query {
   apisb: ApiB!
 }
 
-    '''
+    '''  # noqa: E501 - long lines needed for exact string matches
 
 
 @pytest.fixture

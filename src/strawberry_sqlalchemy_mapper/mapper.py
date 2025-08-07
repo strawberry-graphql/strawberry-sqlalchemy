@@ -88,6 +88,8 @@ from strawberry_sqlalchemy_mapper.exc import (
     UnsupportedDescriptorType,
 )
 from strawberry_sqlalchemy_mapper.field import field
+from strawberry_sqlalchemy_mapper.loader import StrawberrySQLAlchemyLoader
+from strawberry_sqlalchemy_mapper.pagination_cursor_utils import decode_cursor_index
 from strawberry_sqlalchemy_mapper.relay import (
     resolve_model_id,
     resolve_model_id_attr,
@@ -126,6 +128,21 @@ class StrawberrySQLAlchemyLazy(LazyType):
     def resolve_type(self) -> Type[Any]:
         assert self.mapper is not None
         return self.mapper.mapped_types[self.type_name]
+
+
+def _get_loader_from_info(info: Info) -> StrawberrySQLAlchemyLoader:
+    """Extracts the sqlalchemy loader from info."""
+    if isinstance(info.context, dict):
+        return cast("StrawberrySQLAlchemyLoader", info.context["sqlalchemy_loader"])
+    else:
+        return cast("StrawberrySQLAlchemyLoader", info.context.sqlalchemy_loader)
+
+
+def _get_relationship_key(model: object, relationship: RelationshipProperty) -> Tuple[str, ...]:
+    """Return relationship key for data loader."""
+    return tuple(
+        getattr(model, local.key) for local, _ in relationship.local_remote_pairs or [] if local.key
+    )
 
 
 class WithStrawberrySQLAlchemyObjectDefinition(
@@ -444,18 +461,63 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return strawberry_type
 
     def make_connection_wrapper_resolver(
-        self, resolver: Callable[..., Awaitable[Any]], type_name: str
+        self,
+        resolver: Callable[..., Awaitable[Any]],
+        relationship: RelationshipProperty,
     ) -> Callable[..., Awaitable[Any]]:
         """
         Wrap a resolver that returns an array of model types to return
         a Connection instead.
         """
+        type_name = self.model_to_type_or_interface_name(
+            relationship.entity.entity,  # type: ignore[arg-type]
+        )
         connection_type = self._connection_type_for(type_name)
         edge_type = self._edge_type_for(type_name)
 
-        async def wrapper(self, info: Info):
+        async def wrapper(
+            self,
+            info: Info,
+            first: Optional[int] = None,
+            after: Optional[str] = None,
+            last: Optional[int] = None,
+            before: Optional[str] = None,
+        ):
+            # Pass pagination parameters to the resolver
+            related_objects = await resolver(
+                self, info, first=first, after=after, last=last, before=before
+            )
+
+            # Determine if there might be more results in forward or backward direction
+            has_more = False
+            has_more_previous = False
+
+            # For forward pagination, we have more if we got exactly the number requested
+            if first is not None and len(related_objects) == first:
+                has_more = True
+
+            # For backward pagination, we have more previous if we got exactly the number requested
+            if last is not None and len(related_objects) == last:
+                has_more_previous = True
+
+            total_count: Optional[int] = None
+            if last is not None or before is not None:
+                loader = _get_loader_from_info(info)
+                total_count = await loader.get_relationship_record_count_for_key(
+                    relationship, _get_relationship_key(self, relationship)
+                )
+
             return StrawberrySQLAlchemyMapper._resolve_connection_edges(
-                await resolver(self, info), edge_type, connection_type
+                related_objects,
+                edge_type,
+                connection_type,
+                first=first,
+                after=after,
+                last=last,
+                before=before,
+                total_count=total_count,
+                has_more=has_more,
+                has_more_previous=has_more_previous,
             )
 
         setattr(wrapper, _IS_GENERATED_RESOLVER_KEY, True)
@@ -463,60 +525,138 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return wrapper
 
     @staticmethod
-    def _resolve_connection_edges(related_objects, edge_type, connection_type):
-        # TODO: Add pagination support to dataloader resolvers
+    def _resolve_connection_edges(
+        related_objects,
+        edge_type,
+        connection_type,
+        first=None,
+        after=None,
+        last=None,
+        before=None,
+        total_count=None,
+        has_more=False,
+        has_more_previous=False,
+    ):
+        """Resolve connection edges with pagination support.
+
+        Args:
+            related_objects: The list of objects to include in the connection
+            edge_type: The edge type for the connection
+            connection_type: The connection type
+            first: Number of items requested from start (may be None)
+                - curr
+            after: Cursor string for forward pagination (may be None)
+            last: Number of items requested from end (may be None)
+            before: Cursor string for backward pagination (may be None)
+            total_count: Number of records in total (may be None)
+            has_more: Boolean indicating if there are more results after this page
+            has_more_previous: Boolean indicating if there are more results before this page
+        """
+        # Determine if we have previous pages based on cursor or known state
+        has_previous_page = after is not None or has_more_previous
+
+        # For before/last pagination, we know we have next pages if before was provided
+        has_next_page = before is not None or has_more
+
+        if total_count is None and (last is not None or before is not None):
+            raise ValueError("total_count must be set for last/before.")
+
+        decoded_before_index = None if before is None else decode_cursor_index(before)
+        decoded_after_index = None if after is None else decode_cursor_index(after)
+        start_index = 0
+        if decoded_before_index is not None:
+            if last is not None:
+                start_index = max(0, decoded_before_index - last)
+            # otherwise, keep start index at 0
+        elif last is not None:
+            # Before is either invalid or not set; we're taking the last
+            # elements from the end
+            start_index = max(0, total_count - last)
+        else:
+            # Forward pagination is nicer
+            start_index = decoded_after_index or 0
         edges = [
             edge_type.resolve_edge(
                 related_object,
-                cursor=i,
+                cursor=start_index + i,
             )
             for i, related_object in enumerate(related_objects)
         ]
+
         return connection_type(
             edges=edges,
             page_info=relay.PageInfo(
-                has_next_page=False,
-                has_previous_page=False,
+                has_next_page=has_next_page,
+                has_previous_page=has_previous_page,
                 start_cursor=edges[0].cursor if edges else None,
                 end_cursor=edges[-1].cursor if edges else None,
             ),
         )
 
     def relationship_resolver_for(
-        self, relationship: RelationshipProperty
+        self,
+        relationship: RelationshipProperty,
     ) -> Callable[..., Awaitable[Any]]:
-        """
-        Return an async field resolver for the given relationship,
+        """Return an async field resolver for the given relationship,
         so as to avoid n+1 query problem.
         """
 
-        async def resolve(self, info: Info):
-            instance_state = cast("InstanceState", inspect(self))
-            if relationship.key not in instance_state.unloaded:
-                related_objects = getattr(self, relationship.key)
-            else:
-                relationship_key = tuple(
-                    [
-                        getattr(self, local.key)
-                        for local, _ in relationship.local_remote_pairs or []
-                        if local.key
-                    ]
-                )
-                if any(item is None for item in relationship_key):
-                    if relationship.uselist:
-                        return []
-                    else:
-                        return None
-                if isinstance(info.context, dict):
-                    loader = info.context["sqlalchemy_loader"]
+        if relationship.uselist:
+
+            async def resolve_list(
+                self,
+                info: Info,
+                first: Optional[int] = None,
+                after: Optional[str] = None,
+                last: Optional[int] = None,
+                before: Optional[str] = None,
+            ):
+                instance_state = cast("InstanceState", inspect(self))
+                if relationship.key not in instance_state.unloaded:
+                    related_objects = getattr(self, relationship.key)
                 else:
-                    loader = info.context.sqlalchemy_loader
-                related_objects = await loader.loader_for(relationship).load(relationship_key)
-            return related_objects
+                    relationship_key = _get_relationship_key(
+                        self,
+                        relationship,
+                    )
+                    if any(item is None for item in relationship_key):
+                        return []
 
-        setattr(resolve, _IS_GENERATED_RESOLVER_KEY, True)
+                    loader = _get_loader_from_info(info)
 
-        return resolve
+                    related_objects = await loader.loader_for(relationship).load(
+                        relationship_key,
+                        first=first,
+                        after=after,
+                        last=last,
+                        before=before,
+                    )
+                return related_objects
+
+            setattr(resolve_list, _IS_GENERATED_RESOLVER_KEY, True)
+            return resolve_list
+
+        else:
+
+            async def resolve(self, info: Info):
+                instance_state = cast("InstanceState", inspect(self))
+                if relationship.key not in instance_state.unloaded:
+                    related_objects = getattr(self, relationship.key)
+                else:
+                    relationship_key = _get_relationship_key(
+                        self,
+                        relationship,
+                    )
+                    if any(item is None for item in relationship_key):
+                        return None
+                    loader = _get_loader_from_info(info)
+                    related_objects = await loader.loader_for(relationship).load(
+                        relationship_key,
+                    )
+                return related_objects
+
+            setattr(resolve, _IS_GENERATED_RESOLVER_KEY, True)
+            return resolve
 
     def connection_resolver_for(
         self, relationship: RelationshipProperty, use_list=False
@@ -524,12 +664,15 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         """
         Return an async field resolver for the given relationship that
         returns a Connection instead of an array of objects.
+
+        This resolver also handles pagination arguments (first, after, last, before) that are
+        passed from the GraphQL query to the database query.
         """
         relationship_resolver = self.relationship_resolver_for(relationship)
         if relationship.uselist and not use_list:
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
-                self.model_to_type_or_interface_name(relationship.entity.entity),  # type: ignore[arg-type]
+                relationship,
             )
         else:
             return relationship_resolver
@@ -541,7 +684,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         return getattr(type_, _IS_GENERATED_CONNECTION_TYPE_KEY, False)
 
     def association_proxy_resolver_for(
-        self, mapper: Mapper, descriptor: Any, strawberry_type: Type
+        self,
+        mapper: Mapper,
+        descriptor: Any,
+        strawberry_type: Type,
     ) -> Callable[..., Awaitable[Any]]:
         """
         Return an async field resolver for the given association proxy.
@@ -591,7 +737,16 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
                 if not isinstance(outputs, collections.abc.Iterable):
                     return outputs
                 return StrawberrySQLAlchemyMapper._resolve_connection_edges(
-                    outputs, edge_type, connection_type
+                    outputs,
+                    edge_type,
+                    connection_type,
+                    first=None,
+                    after=None,
+                    last=None,
+                    before=None,
+                    total_count=None,
+                    has_more=False,
+                    has_more_previous=False,
                 )
             else:
                 assert descriptor.value_attr in in_between_mapper.columns
