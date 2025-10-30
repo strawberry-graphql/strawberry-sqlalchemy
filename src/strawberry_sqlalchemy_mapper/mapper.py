@@ -204,6 +204,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
     #: for a given (polymorphic base) model
     model_to_interface_name: Callable[[Type[BaseModelType]], str]
 
+    #: If set to true, don't create connections for list type
+    #: relationships
+    always_use_list: bool
+
     #: Default mapping from sqlalchemy types to strawberry types
     _default_sqlalchemy_type_to_strawberry_type_map: Dict[
         Type[TypeEngine], Union[Type[Any], SkipTypeSentinelT]
@@ -248,6 +252,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         self,
         model_to_type_name: Optional[Callable[[Type[BaseModelType]], str]] = None,
         model_to_interface_name: Optional[Callable[[Type[BaseModelType]], str]] = None,
+        always_use_list: Optional[bool] = None,
         extra_sqlalchemy_type_to_strawberry_type_map: Optional[
             Mapping[Type[TypeEngine], Type[Any]]
         ] = None,
@@ -257,6 +262,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         self.model_to_type_name = model_to_type_name
         if model_to_interface_name is None:
             model_to_interface_name = self._default_model_to_interface_name
+        self.always_use_list = always_use_list or False
         self.model_to_interface_name = model_to_interface_name
         self.sqlalchemy_type_to_strawberry_type_map = (
             self._default_sqlalchemy_type_to_strawberry_type_map.copy()
@@ -401,7 +407,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             self._related_type_models.add(relationship_model)
         if relationship.uselist:
             # Use list if excluding relay pagination
-            if use_list:
+            if use_list or self.always_use_list:
                 return List[ForwardRef(type_name)]  # type: ignore
 
             return self._connection_type_for(type_name)
@@ -669,7 +675,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         passed from the GraphQL query to the database query.
         """
         relationship_resolver = self.relationship_resolver_for(relationship)
-        if relationship.uselist and not use_list:
+        if relationship.uselist and not (use_list or self.always_use_list):
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
                 relationship,
