@@ -675,7 +675,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         passed from the GraphQL query to the database query.
         """
         relationship_resolver = self.relationship_resolver_for(relationship)
-        if relationship.uselist and not (use_list or self.always_use_list):
+        if relationship.uselist and not use_list and not self.always_use_list:
             return self.make_connection_wrapper_resolver(
                 relationship_resolver,
                 relationship,
