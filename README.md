@@ -192,6 +192,25 @@ class ApiB(ApiA):
     # "extra_field" will be overridden and will be a float now instead of the String type declared in ModelB:
     extra_field: float = strawberry.field(name="extraField")
 ```
+
+### Relay connections
+
+By default, StrawberrySQLAlchemyMapper() will create [Relay connections](https://relay.dev/graphql/connections.htm) for relationships to lists. If instead you want these relationships to present as plain lists, you have two options:
+
+1. Declare `__use_list__` in your models, for example:
+
+```python
+@strawberry_sqlalchemy_mapper.type(models.Department)
+class Department:
+    __use_list__ = ["employees"]
+```
+
+2. Alternatively, you can disable relay style connections for all models via the `always_use_list` constructor parameter:
+
+```python
+strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper(always_use_list=True)
+```
+
 ## Limitations
 
 ### Supported Types

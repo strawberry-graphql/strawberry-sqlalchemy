@@ -252,10 +252,10 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         self,
         model_to_type_name: Optional[Callable[[Type[BaseModelType]], str]] = None,
         model_to_interface_name: Optional[Callable[[Type[BaseModelType]], str]] = None,
-        always_use_list: Optional[bool] = None,
         extra_sqlalchemy_type_to_strawberry_type_map: Optional[
             Mapping[Type[TypeEngine], Type[Any]]
         ] = None,
+        always_use_list: Optional[bool] = False,
     ) -> None:
         if model_to_type_name is None:
             model_to_type_name = self._default_model_to_type_name
