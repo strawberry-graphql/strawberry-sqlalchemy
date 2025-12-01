@@ -320,9 +320,9 @@ def test_always_use_list_with_mixed_relationships(
     additional_types = list(mapper_always_use_list.mapped_types.values())
     assert len(additional_types) == 2
     mapped_employee_type = additional_types[0]
-    assert mapped_employee_type.__name__ == "EmployeeType"
+    assert mapped_employee_type.__name__ == "Employee"
     mapped_department_type = additional_types[1]
-    assert mapped_department_type.__name__ == "DepartmentType"
+    assert mapped_department_type.__name__ == "Department"
 
     department_type_fields = mapped_department_type.__strawberry_definition__.fields
     employees_field = next((f for f in department_type_fields if f.name == "employees"), None)
