@@ -118,3 +118,8 @@ def base():
 @pytest.fixture
 def mapper():
     return StrawberrySQLAlchemyMapper()
+
+
+@pytest.fixture
+def mapper_always_use_list():
+    return StrawberrySQLAlchemyMapper(always_use_list=True)
