@@ -309,11 +309,11 @@ def test_always_use_list_with_mixed_relationships(
     Employee, Department = employee_and_department_tables
 
     @mapper_always_use_list.type(Employee)
-    class EmployeeType:
+    class Employee:
         pass
 
     @mapper_always_use_list.type(Department)
-    class DepartmentType:
+    class Department:
         pass
 
     mapper_always_use_list.finalize()
@@ -328,9 +328,7 @@ def test_always_use_list_with_mixed_relationships(
     employees_field = next((f for f in department_type_fields if f.name == "employees"), None)
     assert employees_field is not None
     # List relationship should be StrawberryList with always_use_list=True
-    assert isinstance(
-        employees_field.type, StrawberryList
-    )
+    assert isinstance(employees_field.type, StrawberryList)
 
     employee_type_fields = mapped_employee_type.__strawberry_definition__.fields
     department_field = next((f for f in employee_type_fields if f.name == "department"), None)
