@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+0.8.0 - 2025-12-01
+------------------
+
+Added a new optional constructor parameter to always use lists instead of relay Connections for relationships. Defaults to False, maintaining current functionality. If set to True, all relationships will be handled as lists.
+
+Example:
+mapper = StrawberrySQLAlchemyMapper(always_use_list=True)
+
+Contributed by [Gabor Torok](https://github.com/gabor-lbl) via [PR #257](https://github.com/strawberry-graphql/strawberry-sqlalchemy/pull/257/)
+
+
 0.7.0 - 2025-08-07
 ------------------
 
