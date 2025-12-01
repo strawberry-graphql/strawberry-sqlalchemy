@@ -255,14 +255,14 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
         extra_sqlalchemy_type_to_strawberry_type_map: Optional[
             Mapping[Type[TypeEngine], Type[Any]]
         ] = None,
-        always_use_list: Optional[bool] = False,
+        always_use_list: bool = False,
     ) -> None:
         if model_to_type_name is None:
             model_to_type_name = self._default_model_to_type_name
         self.model_to_type_name = model_to_type_name
         if model_to_interface_name is None:
             model_to_interface_name = self._default_model_to_interface_name
-        self.always_use_list = always_use_list or False
+        self.always_use_list = always_use_list
         self.model_to_interface_name = model_to_interface_name
         self.sqlalchemy_type_to_strawberry_type_map = (
             self._default_sqlalchemy_type_to_strawberry_type_map.copy()

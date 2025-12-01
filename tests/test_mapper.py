@@ -303,6 +303,43 @@ def test_always_use_list(employee_and_department_tables, mapper_always_use_list)
     assert isinstance(name.type, StrawberryList) is True
 
 
+def test_always_use_list_with_mixed_relationships(
+    employee_and_department_tables, mapper_always_use_list
+):
+    Employee, Department = employee_and_department_tables
+
+    @mapper_always_use_list.type(Employee)
+    class EmployeeType:
+        pass
+
+    @mapper_always_use_list.type(Department)
+    class DepartmentType:
+        pass
+
+    mapper_always_use_list.finalize()
+    additional_types = list(mapper_always_use_list.mapped_types.values())
+    assert len(additional_types) == 2
+    mapped_employee_type = additional_types[0]
+    assert mapped_employee_type.__name__ == "EmployeeType"
+    mapped_department_type = additional_types[1]
+    assert mapped_department_type.__name__ == "DepartmentType"
+
+    department_type_fields = mapped_department_type.__strawberry_definition__.fields
+    employees_field = next((f for f in department_type_fields if f.name == "employees"), None)
+    assert employees_field is not None
+    # List relationship should be StrawberryList with always_use_list=True
+    assert isinstance(
+        employees_field.type, StrawberryList
+    )
+
+    employee_type_fields = mapped_employee_type.__strawberry_definition__.fields
+    department_field = next((f for f in employee_type_fields if f.name == "department"), None)
+    assert department_field is not None
+    # Single relationship should remain as Optional, not converted to a list
+    assert not isinstance(department_field.type, StrawberryList)
+    assert isinstance(department_field.type, StrawberryOptional)
+
+
 def test_type_relationships(employee_and_department_tables, mapper):
     Employee, _ = employee_and_department_tables
 
