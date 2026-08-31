@@ -386,7 +386,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             else:
                 raise UnsupportedColumnType(column.key, column.type)
         if type_annotation is SkipTypeSentinel:
-            return type_annotation
+            return SkipTypeSentinel
         if column.nullable:
             type_annotation = Optional[type_annotation]
         assert type_annotation is not None
@@ -982,14 +982,7 @@ class StrawberrySQLAlchemyMapper(Generic[BaseModelType]):
             # which will cause the mapped fields to fail
             # (because they may not have default values)
 
-            # For Python versions <= 3.9, only update annotations that don't already exist
-            # because this versions handle inherance differently
-            if sys.version_info[:2] <= (3, 9):
-                for k, v in old_annotations.items():
-                    if k not in type_.__annotations__:
-                        type_.__annotations__[k] = v
-            else:
-                type_.__annotations__.update(old_annotations)
+            type_.__annotations__.update(old_annotations)
 
             if make_interface:
                 mapped_type = strawberry.interface(type_)

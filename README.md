@@ -28,6 +28,7 @@ for all columns and relationships (subject to the limitations below) in the give
 - [Getting Started](#getting-started)
     - [Installation](#installation)
     - [Basic Usage](#basic-usage)
+    - [BigInt Columns](#bigint-columns)
 - [Limitations](#limitations)
     - [Supported Types](#supported-types)
     - [Association Proxies](#association-proxies)
@@ -211,6 +212,33 @@ class Department:
 strawberry_sqlalchemy_mapper = StrawberrySQLAlchemyMapper(always_use_list=True)
 ```
 
+### BigInt Columns
+
+SQLAlchemy `BigInteger` columns are mapped to a custom `BigInt` scalar. Its behaviour is
+defined in `strawberry_sqlalchemy_scalar_map`, which you must register on your schema:
+
+```python
+import strawberry
+from strawberry.schema.config import StrawberryConfig
+from strawberry_sqlalchemy_mapper import strawberry_sqlalchemy_scalar_map
+
+schema = strawberry.Schema(
+    query=Query,
+    config=StrawberryConfig(scalar_map=strawberry_sqlalchemy_scalar_map),
+)
+```
+
+If you already have your own `scalar_map`, merge the two:
+
+```python
+config = StrawberryConfig(
+    scalar_map={**strawberry_sqlalchemy_scalar_map, **my_scalar_map},
+)
+```
+
+Forgetting to register it raises `TypeError: ... fields cannot be resolved. Unexpected type
+'...BigInt'` when the schema is built.
+
 ## Limitations
 
 ### Supported Types
@@ -225,7 +253,7 @@ Natively supports the following SQLAlchemy types:
 |-----------------------|---------------------------|------------------------|
 | `Integer`             | `int`                     |                        |
 | `Float`               | `float`                   |                        |
-| `BigInteger`          | `BigInt`                  |                        |
+| `BigInteger`          | `BigInt`                  | Requires registering `strawberry_sqlalchemy_scalar_map` on your schema (see [BigInt Columns](#bigint-columns)) |
 | `Numeric`             | `Decimal`                 |                        |
 | `DateTime`            | `datetime`                |                        |
 | `Date`                | `date`                    |                        |

@@ -442,8 +442,8 @@ def test_query_with_last_and_before(
     schema = strawberry.Schema(query=Query)
 
     query = """\
-    query Fruits($first: Int $before: String) {
-      fruits(first: $first before: $before) {
+    query Fruits($last: Int $before: String) {
+      fruits(last: $last before: $before) {
         edges {
           node {
             id
@@ -463,7 +463,7 @@ def test_query_with_last_and_before(
         session.commit()
 
         result = schema.execute_sync(
-            query, {"first": 1, "before": relay.to_base64("arrayconnection", 2)}
+            query, {"last": 1, "before": relay.to_base64("arrayconnection", 2)}
         )
         assert result.errors is None
 

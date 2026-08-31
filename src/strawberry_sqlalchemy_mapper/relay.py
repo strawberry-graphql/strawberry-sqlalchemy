@@ -51,7 +51,7 @@ __all__ = [
 @strawberry.type(description="An edge in a connection.")
 class Edge(relay.Edge[NodeType]):
     @classmethod
-    def resolve_edge(cls, node: NodeType, *, cursor: Any = None) -> Self:
+    def resolve_edge(cls, node: NodeType, *, cursor: Any = None, **kwargs: Any) -> Self:
         return cls(cursor=cursor, node=node)
 
 
@@ -62,9 +62,9 @@ class KeysetConnection(relay.Connection[NodeType]):
     )
 
     @classmethod
-    def resolve_connection(
+    def resolve_connection(  # type: ignore[override]
         cls,
-        nodes: Union[Query, StrawberrySQLAlchemyAsyncQuery],  # type: ignore[override]
+        nodes: Union[Query, StrawberrySQLAlchemyAsyncQuery],
         *,
         info: Info,
         before: Optional[str] = None,

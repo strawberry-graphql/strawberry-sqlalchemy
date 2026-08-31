@@ -40,9 +40,10 @@ build-backend = "poetry.core.masonry.api"
 version_scheme = "no-guess-dev"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 sqlalchemy = { extras = ["asyncio"], version = ">=1.4" }
-strawberry-graphql = ">=0.236.0"
+strawberry-graphql = ">=0.288.0"
+typing-extensions = ">=4.12"
 sentinel = ">=0.3,<1.1"
 greenlet = { version = ">=3.0.0rc1", python = ">=3.12" }
 sqlakeyset = "^2.0.1695177552"
@@ -52,23 +53,22 @@ asyncpg = [
   { version = ">=0.28,<0.30", python = "<3.13" },
   { version = ">=0.30", python = ">=3.13" },
 ]
-importlib-metadata = ">=4.11.1,<8.0.0"
-mypy = "1.8.0"
-nox = "^2023.4.22"
-nox-poetry = "^1.0.2"
+mypy = "^2.3.1"
+nox = "^2026.8.17"
+nox-poetry = "^1.2.0"
 packaging = ">=23.1"
 pg8000 = ">=1.30.1"
 psycopg2 = ">=2.9.10"
-pytest = "^7.2"
-pytest-asyncio = ">=0.20.3,<0.24.0"
-pytest-codspeed = "^2.0.1"
-pytest-cov = "^4.0.0"
+pytest = "^9.1"
+pytest-asyncio = "^1.4.0"
+pytest-codspeed = "^5.0.3"
+pytest-cov = "^7.1.0"
 pytest-emoji = "^0.2.0"
-pytest-mypy-plugins = ">=1.10,<4.0"
-pytest-xdist = { extras = ["psutil"], version = "^3.1.0" }
+pytest-mypy-plugins = "^4.0.3"
+pytest-xdist = { extras = ["psutil"], version = "^3.8.0" }
 setuptools = ">=67.8.0"
 "testing.postgresql" = ">=1.3.0"
-ruff = "^0.4.4"
+ruff = "^0.16.5"
 
 [tool.pytest.ini_options]
 addopts = "--emoji --mypy-ini-file=mypy.ini"
@@ -86,19 +86,31 @@ include = ["src/strawberry_sqlalchemy_mapper"]
 exclude = ["**/__pycache__"]
 reportMissingImports = true
 reportMissingTypeStubs = false
-pythonVersion = "3.8"
+pythonVersion = "3.10"
 stubPath = ""
 
 [tool.ruff]
 line-length = 100
 indent-width = 4
 lint.select = ["ALL"]
-target-version = "py38"
+target-version = "py310"
 lint.ignore = [
   # https://github.com/astral-sh/ruff/pull/4427
   # equivalent to keep-runtime-typing
   "UP006",
   "UP007",
+  "UP035",
+  "UP045",
+
+  # we don't use copyright headers
+  "CPY001",
+  # imports are deferred inside functions to avoid circular imports
+  "PLC0415",
+  "PLW0108",
+  # `Literal[True, False, None]` is intentional in the public `field()` signature
+  "PYI061",
+  "PYI016",
+  "FURB110",
 
   "TID252",
   # we use asserts in tests and to hint mypy
@@ -110,8 +122,6 @@ lint.ignore = [
   # we'd want to have consistent docstrings in future
   "D",
   "ANN001", # missing annotation for function argument self.
-  "ANN101",
-  "ANN102",
   "ANN002", # missing annotation for *args.
   "ANN003", # missing annotation for **kwargs.
   "ANN202",
@@ -251,7 +261,6 @@ src = ["src/strawberry_sqlalchemy_mapper", "tests"]
 [tool.ruff.lint.per-file-ignores]
 "docs/conf.py" = ["ERA001", "PTH118", "PTH120"]
 "src/strawberry_sqlalchemy_mapper/field.py" = ["TCH001", "TCH002", "TCH003"]
-"src/strawberry_sqlalchemy_mapper/__init__.py" = ["UP036"]
 "tests/*" = [
   "RSE102",
   "SLF001",

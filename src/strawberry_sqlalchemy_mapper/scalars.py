@@ -1,11 +1,14 @@
-from typing import Union
+from typing import NewType
 
 import strawberry
 
-BigInt = strawberry.scalar(
-    Union[int, str],  # type: ignore
-    serialize=lambda v: int(v),
-    parse_value=lambda v: str(v),
-    description="BigInt field",
-    name="BigInt",
-)
+BigInt = NewType("BigInt", int)
+
+strawberry_sqlalchemy_scalar_map = {
+    BigInt: strawberry.scalar(
+        name="BigInt",
+        description="BigInt field",
+        serialize=lambda v: int(v),
+        parse_value=lambda v: str(v),
+    ),
+}

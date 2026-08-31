@@ -41,7 +41,7 @@ def test_node(
     schema = strawberry.Schema(query=Query)
 
     query = """\
-    query Fruit($id: GlobalID!) {
+    query Fruit($id: ID!) {
       fruit(id: $id) {
         id
         name
@@ -92,7 +92,7 @@ async def test_node_async(
     schema = strawberry.Schema(query=Query)
 
     query = """\
-    query Fruit($id: GlobalID!) {
+    query Fruit($id: ID!) {
       fruit(id: $id) {
         id
         name
@@ -143,7 +143,7 @@ def test_node_none(
     schema = strawberry.Schema(query=Query)
 
     query = """\
-    query Fruit($id: GlobalID!) {
+    query Fruit($id: ID!) {
       fruit(id: $id) {
         id
         name
@@ -187,7 +187,7 @@ def test_nodes(
     schema = strawberry.Schema(query=Query)
 
     query = """\
-    query Fruit($ids: [GlobalID!]!) {
+    query Fruit($ids: [ID!]!) {
       fruits(ids: $ids) {
         id
         name
@@ -249,7 +249,7 @@ async def test_nodes_async(
     schema = strawberry.Schema(query=Query)
 
     query = """\
-    query Fruit($ids: [GlobalID!]!) {
+    query Fruit($ids: [ID!]!) {
       fruits(ids: $ids) {
         id
         name
